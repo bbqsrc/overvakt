@@ -25,6 +25,8 @@ lazy_static! {
 pub struct GotifyNotifier;
 
 impl GenericNotifier for GotifyNotifier {
+    type Error = bool;
+    
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref gotify) = notify.gotify {
             // Build up the message text

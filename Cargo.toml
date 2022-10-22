@@ -18,37 +18,36 @@ path = "src/main.rs"
 doc = false
 
 [dependencies]
-log = { version = "0.4", features = ["std"] }
-clap = { version = "3.2", features = ["std", "cargo"] }
-lazy_static = "1.4"
-time = { version = "0.3", features = ["formatting"] }
-serde = "1.0"
-serde_derive = "1.0"
-toml = "0.5"
-base64 = "0.13"
-uuid = { version = "1.1", features = ["v4", "fast-rng"], default-features = false }
-regex = "1.6"
-url = { version = "2.2", default-features = false }
-url_serde = { version = "0.2", default-features = false }
-http = "0.2"
-http-serde = "1.1"
-indexmap = { version = "1.9", features = ["serde-1"] }
-actix-web = { version = "3.3", default-features = false }
+log = { version = "0.4.17", features = ["std"] }
+clap = { version = "4.0.18", features = ["std", "cargo"] }
+lazy_static = "1.4.0"
+time = { version = "0.3.15", features = ["formatting"] }
+serde = "1.0.147"
+serde_derive = "1.0.147"
+toml = "0.5.9"
+base64 = "0.13.1"
+uuid = { version = "1.2.1", features = ["v4", "fast-rng"], default-features = false }
+regex = "1.6.0"
+url = { version = "2.3.1", default-features = false }
+url_serde = { version = "0.2.0", default-features = false }
+http = "0.2.8"
+http-serde = "1.1.2"
+indexmap = { version = "1.9.1", features = ["serde-1"] }
+actix-web = { version = "3.3" }
 actix-files = "0.5"
 actix-web-httpauth = "0.5"
-tera = { version = "1.16", default-features = false }
-native-tls = { version = "0.2", features = ["vendored"] }
-openssl-probe = "0.1"
-reqwest = { version = "0.11", features = ["native-tls-vendored", "gzip", "blocking", "json"], default-features = false }
-ping = "0.4"
-run_script = "0.10"
-lettre = { version = "0.9", features = ["smtp-transport"], optional = true }
-lettre_email = { version = "0.9", optional = true }
-libstrophe = { version = "0.17", optional = true }
+tera = { version = "1.17.1", default-features = false }
+native-tls = { version = "0.2.10", features = ["vendored"] }
+openssl-probe = "0.1.5"
+reqwest = { version = "0.11.12", features = ["native-tls-vendored", "gzip", "blocking", "json"], default-features = false }
+ping = "0.4.0"
+run_script = "0.10.0"
+lettre = { version = "0.10.1", features = ["smtp-transport", "builder"], optional = true }
+libstrophe = { version = "0.17.0", optional = true }
 
 [features]
 default = ["notifier-email", "notifier-twilio", "notifier-slack", "notifier-zulip", "notifier-telegram", "notifier-pushover", "notifier-gotify", "notifier-matrix", "notifier-webex", "notifier-webhook"]
-notifier-email = ["lettre", "lettre_email"]
+notifier-email = ["lettre"]
 notifier-twilio = []
 notifier-slack = []
 notifier-zulip = []

@@ -53,6 +53,8 @@ struct WebHookPayloadPage<'a> {
 }
 
 impl GenericNotifier for WebHookNotifier {
+    type Error = bool;
+    
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref webhook) = notify.webhook {
             // Acquire hook type

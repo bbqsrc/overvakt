@@ -31,6 +31,8 @@ struct WebExPayload<'a> {
 }
 
 impl GenericNotifier for WebExNotifier {
+    type Error = bool;
+    
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref webex) = notify.webex {
             let nodes_label = notification.replicas.join(", ");

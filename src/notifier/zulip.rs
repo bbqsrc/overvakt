@@ -34,6 +34,8 @@ struct ZulipPayload<'a> {
 }
 
 impl GenericNotifier for ZulipNotifier {
+    type Error = bool;
+    
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref zulip) = notify.zulip {
             let status_label = format!("{:?}", notification.status);

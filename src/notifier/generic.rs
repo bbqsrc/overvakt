@@ -23,7 +23,9 @@ pub struct Notification<'a> {
 }
 
 pub trait GenericNotifier {
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool>;
+    type Error;
+
+    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), Self::Error>;
     fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool;
     fn name() -> &'static str;
 }

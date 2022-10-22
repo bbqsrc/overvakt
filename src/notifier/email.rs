@@ -6,12 +6,12 @@
 
 use std::time::Duration;
 
-use lettre::smtp::authentication::Credentials;
-use lettre::smtp::client::net::ClientTlsParameters;
-use lettre::smtp::{ClientSecurity, ConnectionReuseParameters, SmtpClient, SmtpTransport};
+use lettre::transport::smtp;
+use lettre::transport::smtp::{
+    authentication::Credentials, SmtpTransport
+};
 use lettre::Transport;
-use lettre_email::EmailBuilder;
-use native_tls::TlsConnector;
+use lettre::message::{MessageBuilder, Mailbox};
 
 use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotify;
@@ -20,7 +20,9 @@ use crate::APP_CONF;
 pub struct EmailNotifier;
 
 impl GenericNotifier for EmailNotifier {
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    type Error = lettre::error::Error;
+
+    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), Self::Error> {
         if let Some(ref email_config) = notify.email {
             let nodes_label = notification.replicas.join(", ");
 
@@ -57,35 +59,35 @@ impl GenericNotifier for EmailNotifier {
             debug!("will send email notification with message: {}", &message);
 
             // Build up the email
-            let email_message = EmailBuilder::new()
-                .to(email_config.to.as_str())
-                .from((
-                    email_config.from.as_str(),
-                    APP_CONF.branding.page_title.as_str(),
+            let email_message = MessageBuilder::new()
+                .to(email_config.to.as_str().parse().expect("TODO"))
+                .from(Mailbox::new(
+                    Some(APP_CONF.branding.page_title.to_string()),
+                    email_config.from.as_str().parse().expect("TODO")
                 ))
                 .subject(format!(
                     "{} | {}",
                     notification.status.as_str().to_uppercase(),
                     &nodes_label
                 ))
-                .text(message)
-                .build()
-                .or(Err(true))?;
+                .body(message)
+                .expect("TODO: invalid message");
 
             // Deliver the message
-            return acquire_transport(
+            let transport = acquire_transport(
                 &email_config.smtp_host,
                 email_config.smtp_port,
                 email_config.smtp_username.to_owned(),
                 email_config.smtp_password.to_owned(),
                 email_config.smtp_encrypt,
-            )
-            .map(|mut transport| transport.send(email_message.into()))
-            .and(Ok(()))
-            .or(Err(true));
+            ).expect("TODO");
+
+            transport.send(&email_message).expect("TODO: sending failed");
+
+            return Ok(());
         }
 
-        Err(false)
+        panic!("Oh no");
     }
 
     fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool {
@@ -107,47 +109,20 @@ fn acquire_transport(
     smtp_username: Option<String>,
     smtp_password: Option<String>,
     smtp_encrypt: bool,
-) -> Result<SmtpTransport, ()> {
-    let mut security = ClientSecurity::None;
+) -> Result<SmtpTransport, smtp::Error> {
+    let relay = if smtp_encrypt {
+        SmtpTransport::starttls_relay(&format!("{}:{}", smtp_host, smtp_port))?
+    } else {
+        SmtpTransport::relay(&format!("{}:{}", smtp_host, smtp_port))?
+    };
 
-    if smtp_encrypt == true {
-        let connector_builder = TlsConnector::builder();
-        if let Ok(connector) = connector_builder.build() {
-            security = ClientSecurity::Required(ClientTlsParameters {
-                connector: connector,
-                domain: smtp_host.to_string(),
-            });
+    let relay = relay.timeout(Some(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS)));
+    let relay = match (smtp_username, smtp_password) {
+        (Some(username), Some(password)) => {
+            relay.credentials(Credentials::new(username, password))
         }
+        _ => relay
+    };
 
-        // Do not deliver email if TLS context cannot be acquired (prevents unencrypted emails \
-        //   to be sent)
-        if let ClientSecurity::None = security {
-            error!("could not build smtp encrypted connector");
-
-            return Err(());
-        }
-    }
-
-    match SmtpClient::new(format!("{}:{}", smtp_host, smtp_port), security) {
-        Ok(transport) => {
-            let mut transport_builder = transport
-                .timeout(Some(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS)))
-                .connection_reuse(ConnectionReuseParameters::NoReuse);
-
-            match (smtp_username, smtp_password) {
-                (Some(smtp_username_value), Some(smtp_password_value)) => {
-                    transport_builder = transport_builder
-                        .credentials(Credentials::new(smtp_username_value, smtp_password_value));
-                }
-                _ => {}
-            }
-
-            Ok(transport_builder.transport())
-        }
-        Err(err) => {
-            error!("could not acquire smtp transport: {}", err);
-
-            Err(())
-        }
-    }
+    Ok(relay.build())
 }

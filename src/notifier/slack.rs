@@ -44,6 +44,8 @@ struct SlackPayloadAttachmentField<'a> {
 }
 
 impl GenericNotifier for SlackNotifier {
+    type Error = bool;
+    
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref slack) = notify.slack {
             let status_label = format!("{:?}", notification.status);
