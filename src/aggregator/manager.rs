@@ -15,7 +15,7 @@ use crate::notifier::generic::Notification;
 use crate::prober::manager::STORE as PROBER_STORE;
 use crate::prober::mode::Mode;
 use crate::prober::status::Status;
-use crate::APP_CONF;
+use crate::{APP_CONF, notifier};
 
 #[cfg(feature = "notifier-email")]
 use crate::notifier::email::EmailNotifier;
@@ -339,7 +339,7 @@ fn time_now_as_string() -> String {
         .unwrap_or("?".to_string())
 }
 
-fn dispatch_startup_notification() {
+fn dispatch_startup_notification() -> Result<(), Vec<Error>> {
     if let Some(ref conf_notify) = APP_CONF.notify {
         if conf_notify.startup_notification == true {
             debug!("sending aggregate startup notification...");
@@ -349,12 +349,21 @@ fn dispatch_startup_notification() {
                 replicas: Vec::new(),
                 changed: true,
                 startup: true,
-            });
+            })?;
         }
     }
+
+    Ok(())
 }
 
-fn notify(bumped_states: &BumpedStates) {
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[cfg(feature = "notifier-email")]
+    #[error("There was an error with the `email` notifier")]
+    Email(Vec<notifier::email::Error>),
+}
+
+fn notify(bumped_states: &BumpedStates) -> Result<(), Vec<Error>> {
     let notification = Notification {
         status: &bumped_states.status,
         time: time_now_as_string(),
@@ -363,9 +372,18 @@ fn notify(bumped_states: &BumpedStates) {
         startup: bumped_states.startup,
     };
 
+    let mut errors: Vec<Error> = vec![];
+
     if let Some(ref notify) = APP_CONF.notify {
         #[cfg(feature = "notifier-email")]
-        Notification::dispatch::<EmailNotifier>(notify, &notification).ok();
+        if let Some(config) = notify.email.as_ref() {
+            match Notification::dispatch::<EmailNotifier>(config, &notification) {
+                Ok(_) => {},
+                Err(e) => {
+                    errors.push(Error::Email(e));
+                }
+            }
+        }
 
         #[cfg(feature = "notifier-twilio")]
         Notification::dispatch::<TwilioNotifier>(notify, &notification).ok();
@@ -397,11 +415,17 @@ fn notify(bumped_states: &BumpedStates) {
         #[cfg(feature = "notifier-webhook")]
         Notification::dispatch::<WebHookNotifier>(notify, &notification).ok();
     }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
-pub fn run() {
+pub fn run() -> Result<(), Vec<Error>> {
     // Notify that systems are healthy (when booting up aggregator)
-    dispatch_startup_notification();
+    dispatch_startup_notification()?;
 
     // Start aggregate loop
     loop {
@@ -411,7 +435,7 @@ pub fn run() {
         let bumped_states = scan_and_bump_states();
 
         if let Some(ref bumped_states_inner) = bumped_states {
-            notify(bumped_states_inner);
+            notify(bumped_states_inner)?;
         }
 
         info!(

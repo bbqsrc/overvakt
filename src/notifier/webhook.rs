@@ -53,6 +53,7 @@ struct WebHookPayloadPage<'a> {
 }
 
 impl GenericNotifier for WebHookNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {

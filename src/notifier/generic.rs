@@ -7,7 +7,6 @@
 use std::thread;
 use std::time::Duration;
 
-use crate::config::config::ConfigNotify;
 use crate::prober::status::Status;
 
 const DISPATCH_TRY_WAIT_SECONDS: u64 = 2;
@@ -23,18 +22,19 @@ pub struct Notification<'a> {
 }
 
 pub trait GenericNotifier {
+    type Config;
     type Error;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), Self::Error>;
-    fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool;
+    fn attempt(notify: &Self::Config, notification: &Notification) -> Result<(), Self::Error>;
+    fn can_notify(notify: &Self::Config, notification: &Notification) -> bool;
     fn name() -> &'static str;
 }
 
 impl<'a> Notification<'a> {
     pub fn dispatch<N: GenericNotifier>(
-        notify: &ConfigNotify,
+        notify: &N::Config,
         notification: &Notification,
-    ) -> Result<(), bool> {
+    ) -> Result<(), Vec<N::Error>> {
         if N::can_notify(notify, notification) == true {
             info!(
                 "dispatch {} notification for status: {:?} and replicas: {:?}",
@@ -43,6 +43,7 @@ impl<'a> Notification<'a> {
                 notification.replicas
             );
 
+            let mut errors = vec![];
             for try_index in 1..(DISPATCH_TRY_ATTEMPT_TIMES + 1) {
                 debug!(
                     "dispatch {} notification attempt: #{}",
@@ -56,21 +57,24 @@ impl<'a> Notification<'a> {
                 }
 
                 // Attempt notification dispatch
-                if N::attempt(notify, notification).is_ok() == true {
-                    debug!("dispatched notification to provider: {}", N::name());
-
-                    return Ok(());
+                match N::attempt(notify, notification) {
+                    Ok(_) => {
+                        debug!("dispatched notification to provider: {}", N::name());
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        errors.push(e);
+                    }
                 }
             }
 
             error!("failed dispatching notification to provider: {}", N::name());
-
-            return Err(true);
+            return Err(errors);
         }
 
         debug!("did not dispatch notification to provider: {}", N::name());
 
-        Err(false)
+        Ok(())
     }
 
     pub fn expected(&self, reminders_only: bool) -> bool {

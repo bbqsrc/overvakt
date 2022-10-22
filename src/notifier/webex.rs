@@ -31,6 +31,7 @@ struct WebExPayload<'a> {
 }
 
 impl GenericNotifier for WebExNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {

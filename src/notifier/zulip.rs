@@ -34,6 +34,7 @@ struct ZulipPayload<'a> {
 }
 
 impl GenericNotifier for ZulipNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {

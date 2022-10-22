@@ -35,6 +35,7 @@ static MATRIX_MESSAGE_FORMAT: &'static str = "org.matrix.custom.html";
 pub struct MatrixNotifier;
 
 impl GenericNotifier for MatrixNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {

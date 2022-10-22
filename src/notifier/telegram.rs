@@ -41,6 +41,7 @@ enum TelegramChatID<'a> {
 }
 
 impl GenericNotifier for TelegramNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {

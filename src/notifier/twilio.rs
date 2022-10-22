@@ -28,6 +28,7 @@ lazy_static! {
 pub struct TwilioNotifier;
 
 impl GenericNotifier for TwilioNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {

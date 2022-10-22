@@ -27,6 +27,7 @@ static PUSHOVER_API_URL: &'static str = "https://api.pushover.net/1/messages.jso
 pub struct PushoverNotifier;
 
 impl GenericNotifier for PushoverNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {

@@ -16,6 +16,7 @@ use crate::APP_CONF;
 pub struct XMPPNotifier;
 
 impl GenericNotifier for XMPPNotifier {
+    type Config = ConfigNotify;
     type Error = bool;
     
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
