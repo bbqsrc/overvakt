@@ -779,6 +779,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ff7415e9ae3fff1225851df9e0d9e4e5479f947619774677a63572e55e80eff"
 
 [[package]]
+name = "overvakt-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64",
+ "clap",
+ "http",
+ "http-serde",
+ "indexmap",
+ "lazy_static",
+ "lettre",
+ "libstrophe",
+ "log",
+ "ping",
+ "poem",
+ "regex",
+ "reqwest",
+ "run_script",
+ "serde",
+ "serde_derive",
+ "tera",
+ "thiserror",
+ "time",
+ "tokio",
+ "toml",
+ "url 2.3.1",
+ "url_serde",
+ "uuid",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1601,37 +1632,6 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
-
-[[package]]
-name = "vigil-server"
-version = "1.24.3"
-dependencies = [
- "anyhow",
- "base64",
- "clap",
- "http",
- "http-serde",
- "indexmap",
- "lazy_static",
- "lettre",
- "libstrophe",
- "log",
- "ping",
- "poem",
- "regex",
- "reqwest",
- "run_script",
- "serde",
- "serde_derive",
- "tera",
- "thiserror",
- "time",
- "tokio",
- "toml",
- "url 2.3.1",
- "url_serde",
- "uuid",
-]
 
 [[package]]
 name = "walkdir"

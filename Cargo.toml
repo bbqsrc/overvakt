@@ -1,19 +1,18 @@
 [package]
-name = "vigil-server"
-version = "1.24.3"
-description = "Microservices Status Page. Monitors a distributed infrastructure and sends alerts (Slack, SMS, etc.)."
+name = "overvakt-server"
+version = "0.1.0"
+description = "Service uptime monitor with alert plugins"
 readme = "README.md"
 license = "MPL-2.0"
 edition = "2021"
-homepage = "https://github.com/valeriansaliou/vigil"
-repository = "https://github.com/valeriansaliou/vigil.git"
+repository = "https://github.com/bbqsrc/overvakt"
 keywords = ["microservices", "infrastructure", "status", "monitor", "slack"]
 categories = ["web-programming"]
-authors = ["Valerian Saliou <valerian@valeriansaliou.name>"]
+authors = ["Brendan Molloy <brendan@bbqsrc.net>"]
 exclude = ["dev/*"]
 
 [[bin]]
-name = "vigil"
+name = "overvakt"
 path = "src/main.rs"
 doc = false
 
@@ -64,8 +63,7 @@ debug = true
 debug-assertions = true
 
 [profile.release]
-opt-level = "s"
-lto = true
+lto = "fat"
 debug = false
 debug-assertions = false
 panic = "abort"

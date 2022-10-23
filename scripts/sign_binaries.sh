@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-#  Vigil
+#  Övervakt
 #
 #  Microservices Status Page
 #  Copyright: 2022, Valerian Saliou <valerian@valeriansaliou.name>
@@ -16,7 +16,7 @@ while [ "$1" != "" ]; do
     case $argument_key in
         -v | --version)
             # Notice: strip any leading 'v' to the version number
-            VIGIL_VERSION="${argument_value/v}"
+            OVERVAKT_VERSION="${argument_value/v}"
             ;;
         *)
             echo "Unknown argument received: '$argument_key'"
@@ -28,15 +28,15 @@ while [ "$1" != "" ]; do
 done
 
 # Ensure release version is provided
-if [ -z "$VIGIL_VERSION" ]; then
-  echo "No Vigil release version was provided, please provide it using '--version'"
+if [ -z "$OVERVAKT_VERSION" ]; then
+  echo "No Övervakt release version was provided, please provide it using '--version'"
 
   exit 1
 fi
 
 # Define sign pipeline
 function sign_for_architecture {
-    final_tar="v$VIGIL_VERSION-$1.tar.gz"
+    final_tar="v$OVERVAKT_VERSION-$1.tar.gz"
     gpg_signer="valerian@valeriansaliou.name"
 
     gpg -u "$gpg_signer" --armor --detach-sign "$final_tar"
@@ -56,16 +56,16 @@ BASE_DIR="$ABSPATH/../"
 rc=0
 
 pushd "$BASE_DIR" > /dev/null
-    echo "Executing sign steps for Vigil v$VIGIL_VERSION..."
+    echo "Executing sign steps for Övervakt v$OVERVAKT_VERSION..."
 
     sign_for_architecture "x86_64" && \
         sign_for_architecture "armv7"
     rc=$?
 
     if [ $rc -eq 0 ]; then
-        echo "Success: Done executing sign steps for Vigil v$VIGIL_VERSION"
+        echo "Success: Done executing sign steps for Övervakt v$OVERVAKT_VERSION"
     else
-        echo "Error: Failed executing sign steps for Vigil v$VIGIL_VERSION"
+        echo "Error: Failed executing sign steps for Övervakt v$OVERVAKT_VERSION"
     fi
 popd > /dev/null
 

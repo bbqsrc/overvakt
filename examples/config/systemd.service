@@ -1,13 +1,13 @@
 [Unit]
-Description=Vigil Microservices Status Page
+Description=Övervakt Uptime Monitor
 After=network.target
 
 [Service]
 Type=simple
-User=vigil
-Group=vigil
-ExecStartPre=/sbin/setcap 'cap_net_raw+ep' /bin/vigil
-ExecStart=/bin/vigil -c /etc/vigil.cfg
+User=overvakt
+Group=overvakt
+ExecStartPre=/sbin/setcap 'cap_net_raw+ep' /bin/overvakt
+ExecStart=/bin/overvakt -c /etc/overvakt.cfg
 Restart=on-failure
 PermissionsStartOnly=true
 

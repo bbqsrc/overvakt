@@ -218,7 +218,7 @@
 
     <footer class="wrapper">
       <p class="font-sans-semibold">© {{ environment.year }} {{ config.company_name | escape }}</p>
-      <p class="font-sans-regular">This status page is powered by <a href="https://github.com/valeriansaliou/vigil" target="_blank" class="font-sans-semibold">Vigil</a>.</p>
+      <p class="font-sans-regular">This status page is powered by <a href="https://github.com/bbqsrc/overvakt" target="_blank" class="font-sans-semibold">Övervakt</a>.</p>
     </footer>
   </body>
 </html>

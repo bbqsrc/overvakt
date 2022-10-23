@@ -1,4 +1,4 @@
-FROM rustlang/rust:nightly-buster AS build
+FROM rustlang/rust:1.64-buster AS build
 
 RUN apt-get update
 RUN apt-get install -y musl-tools
@@ -13,16 +13,16 @@ RUN rustc --version && \
 WORKDIR /app
 COPY . /app
 RUN cargo clean && cargo build --release --target x86_64-unknown-linux-musl
-RUN strip ./target/x86_64-unknown-linux-musl/release/vigil
+RUN strip ./target/x86_64-unknown-linux-musl/release/overvakt
 
 FROM scratch
 
-WORKDIR /usr/src/vigil
+WORKDIR /usr/src/overvakt
 
 COPY ./res/assets/ ./res/assets/
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=build /app/target/x86_64-unknown-linux-musl/release/vigil /usr/local/bin/vigil
+COPY --from=build /app/target/x86_64-unknown-linux-musl/release/overvakt /usr/local/bin/overvakt
 
-CMD [ "vigil", "-c", "/etc/vigil.cfg" ]
+CMD [ "overvakt", "-c", "/etc/overvakt.toml" ]
 
 EXPOSE 8080

@@ -1,4 +1,15 @@
-// Vigil
+// SPDX-License-Identifier: MPL-2.0
+//
+// Övervakt
+// Copyright © 2022 Brendan Molloy <brendan@bbqsrc.net>
+//
+//   This Source Code Form is subject to the terms of the Mozilla Public
+//   License, v. 2.0. If a copy of the MPL was not distributed with this file,
+//   You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// ---
+//
+// Fork of: Vigil
 //
 // Microservices Status Page
 // Copyright: 2018, Valerian Saliou <valerian@valeriansaliou.name>
@@ -601,7 +612,7 @@ fn dispatch_replicas_in_threads(replicas: Vec<ProbeReplica>, parallelism: u16) {
         let start_time = SystemTime::now();
 
         // Initialize probing threads registry (this helps split the work into multiple parallel \
-        //   synchronous threads, where parallelism can be increased on large Vigil setups)
+        //   synchronous threads, where parallelism can be increased on large Övervakt setups)
         let mut prober_threads = Vec::new();
 
         for replicas_chunk in replicas.chunks(chunk_size) {

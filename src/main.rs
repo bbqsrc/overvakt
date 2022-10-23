@@ -1,4 +1,15 @@
-// Vigil
+// SPDX-License-Identifier: MPL-2.0
+//
+// Övervakt
+// Copyright © 2022 Brendan Molloy <brendan@bbqsrc.net>
+//
+//   This Source Code Form is subject to the terms of the Mozilla Public
+//   License, v. 2.0. If a copy of the MPL was not distributed with this file,
+//   You can obtain one at https://mozilla.org/MPL/2.0/.
+//
+// ---
+//
+// Fork of: Vigil
 //
 // Microservices Status Page
 // Copyright: 2018, Valerian Saliou <valerian@valeriansaliou.name>
@@ -38,10 +49,10 @@ struct AppArgs {
     config: String,
 }
 
-pub static THREAD_NAME_PROBER_POLL: &'static str = "vigil-prober-poll";
-pub static THREAD_NAME_PROBER_SCRIPT: &'static str = "vigil-prober-script";
-pub static THREAD_NAME_AGGREGATOR: &'static str = "vigil-aggregator";
-pub static THREAD_NAME_RESPONDER: &'static str = "vigil-responder";
+pub static THREAD_NAME_PROBER_POLL: &'static str = "overvakt-prober-poll";
+pub static THREAD_NAME_PROBER_SCRIPT: &'static str = "overvakt-prober-script";
+pub static THREAD_NAME_AGGREGATOR: &'static str = "overvakt-aggregator";
+pub static THREAD_NAME_RESPONDER: &'static str = "overvakt-responder";
 
 macro_rules! gen_spawn_managed {
     ($name:expr, $method:ident, $thread_name:ident, $managed_fn:ident) => {
@@ -113,7 +124,7 @@ fn make_app_args() -> AppArgs {
                 .short('c')
                 .long("config")
                 .help("Path to configuration file")
-                .default_value("./config.cfg"),
+                .default_value("./overvakt.toml"),
         )
         .get_matches();
 
