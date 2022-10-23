@@ -365,17 +365,3 @@ scripts = [
 ```
 
 _Note that scripts are executed in a system shell ran by a Övervakt-owned sub-process. Make sure that Övervakt runs on an unix user with limited privileges. Running Övervakt as root would let any configured script perform root-level actions on the machine, which is not recommended._
-
-## Troubleshoot Issues
-
-### ICMP replicas always report as `dead`
-
-On Linux systems, non-priviledge users cannot create raw sockets, which Övervakt ICMP probing system requires. It means that, by default, all ICMP probe attempts will fail silently, as if the host being probed was always down.
-
-This can easily be fixed by allowing Övervakt to create raw sockets:
-
-```bash
-setcap 'cap_net_raw+ep' /bin/overvakt
-```
-
-_Note that HTTP and TCP probes do not require those raw socket capabilities._
