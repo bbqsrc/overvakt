@@ -33,7 +33,6 @@ use crate::prober::manager::{
     initialize_store as initialize_store_prober, run_poll as run_poll_prober,
     run_script as run_script_prober,
 };
-use crate::responder::manager::run as run_responder;
 
 struct AppArgs {
     config: String,
@@ -97,12 +96,12 @@ gen_spawn_managed!(
     run_aggregator
 );
 
-gen_spawn_managed!(
-    "responder",
-    spawn_responder,
-    THREAD_NAME_RESPONDER,
-    run_responder
-);
+// gen_spawn_managed!(
+//     "responder",
+//     spawn_responder,
+//     THREAD_NAME_RESPONDER,
+//     run_responder
+// );
 
 fn make_app_args() -> AppArgs {
     let matches = Command::new(clap::crate_name!())
@@ -137,7 +136,8 @@ fn ensure_states() {
     );
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     // Initialize shared logger
     let _logger = ConfigLogger::init(
         LevelFilter::from_str(&APP_CONF.server.log_level).expect("invalid log level"),
@@ -159,7 +159,9 @@ fn main() {
     thread::spawn(spawn_aggregator);
 
     // Spawn Web responder (foreground thread)
-    spawn_responder();
+    responder::manager::run().await?;
 
-    error!("could not start");
+    // error!("could not start");
+    info!("shutting down server");
+    Ok(())
 }

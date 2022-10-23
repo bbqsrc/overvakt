@@ -6,7 +6,6 @@
 
 mod announcements;
 mod context;
-mod payload;
 mod routes;
 
 pub mod manager;

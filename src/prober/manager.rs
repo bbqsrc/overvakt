@@ -17,17 +17,16 @@ use ping::ping;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, USER_AGENT};
 use reqwest::redirect::Policy as RedirectPolicy;
-use reqwest::StatusCode;
 use run_script::{self, ScriptOptions};
 
 use super::replica::ReplicaURL;
 use super::states::{
     ServiceStates, ServiceStatesNotifier, ServiceStatesProbe, ServiceStatesProbeNode,
     ServiceStatesProbeNodeRabbitMQ, ServiceStatesProbeNodeReplica,
-    ServiceStatesProbeNodeReplicaMetrics, ServiceStatesProbeNodeReplicaMetricsRabbitMQ,
+    ServiceStatesProbeNodeReplicaMetrics,
 };
 use super::status::Status;
-use crate::config::config::{ConfigPluginsRabbitMQ, ConfigProbeServiceNodeHTTPMethod};
+use crate::config::config::{ConfigProbeServiceNodeHTTPMethod};
 use crate::config::regex::Regex;
 use crate::prober::manager::STORE as PROBER_STORE;
 use crate::prober::mode::Mode;
@@ -56,12 +55,6 @@ lazy_static! {
         .default_headers(make_default_headers())
         .build()
         .unwrap();
-}
-
-#[derive(Deserialize)]
-struct RabbitMQAPIQueueResponse {
-    messages_ready: u32,
-    messages_unacknowledged: u32,
 }
 
 pub struct Store {
@@ -544,100 +537,6 @@ fn proceed_replica_probe_script(script: &String) -> (Status, Option<Duration>) {
     (status, SystemTime::now().duration_since(start_time).ok())
 }
 
-fn proceed_rabbitmq_queue_probe(
-    rabbitmq: &ConfigPluginsRabbitMQ,
-    rabbitmq_queue: &ServiceStatesProbeNodeRabbitMQ,
-) -> (bool, bool, Option<(u32, u32)>) {
-    let url_queue = rabbitmq.api_url.join(&format!(
-        "/api/queues/{}/{}",
-        rabbitmq.virtualhost, rabbitmq_queue.queue
-    ));
-
-    if let Ok(url_queue_value) = url_queue {
-        let url_queue_string = url_queue_value.as_str();
-
-        debug!(
-            "prober poll will fire for rabbitmq queue at url: {}",
-            url_queue_string
-        );
-
-        let response = PROBE_HTTP_CLIENT
-            .get(url_queue_string)
-            .basic_auth(
-                rabbitmq.auth_username.to_owned(),
-                Some(rabbitmq.auth_password.to_owned()),
-            )
-            .send();
-
-        if let Ok(response_inner) = response {
-            let status = response_inner.status();
-
-            debug!(
-                "prober poll on rabbitmq queue result received for url: {} with status: {}",
-                url_queue_string,
-                status.as_u16()
-            );
-
-            // Check JSON result?
-            if status == StatusCode::OK {
-                if let Ok(response_json) = response_inner.json::<RabbitMQAPIQueueResponse>() {
-                    let (mut queue_loaded, mut queue_stalled) = (false, false);
-
-                    let queue_counts = Some((
-                        response_json.messages_ready,
-                        response_json.messages_unacknowledged,
-                    ));
-
-                    // Queue loaded?
-                    if response_json.messages_ready >= rabbitmq.queue_ready_healthy_below
-                        || response_json.messages_unacknowledged
-                            >= rabbitmq_queue
-                                .queue_nack_healthy_below
-                                .unwrap_or(rabbitmq.queue_nack_healthy_below)
-                    {
-                        info!(
-                            "got loaded rabbitmq queue: {} (ready: {}, unacknowledged: {})",
-                            rabbitmq_queue.queue,
-                            response_json.messages_ready,
-                            response_json.messages_unacknowledged
-                        );
-
-                        queue_loaded = true;
-                    }
-
-                    // Queue stalled?
-                    if response_json.messages_ready > rabbitmq.queue_ready_dead_above
-                        || response_json.messages_unacknowledged
-                            > rabbitmq_queue
-                                .queue_nack_dead_above
-                                .unwrap_or(rabbitmq.queue_nack_dead_above)
-                    {
-                        info!(
-                            "got stalled rabbitmq queue: {} (ready: {}, unacknowledged: {})",
-                            rabbitmq_queue.queue,
-                            response_json.messages_ready,
-                            response_json.messages_unacknowledged
-                        );
-
-                        queue_stalled = true;
-                    }
-
-                    return (queue_loaded, queue_stalled, queue_counts);
-                }
-            } else {
-                warn!(
-                    "rabbitmq api replied with an invalid status code: {}",
-                    status.as_u16()
-                );
-            }
-        } else {
-            warn!("rabbitmq api request failed");
-        }
-    }
-
-    (false, false, None)
-}
-
 fn dispatch_replica<'a>(probe_replica: &ProbeReplica) {
     let probe_id: &String;
     let node_id: &String;
@@ -755,96 +654,6 @@ fn dispatch_polls() {
 fn dispatch_scripts() {
     // Run scripts
     dispatch_replicas_in_threads(map_script_replicas(), APP_CONF.metrics.script_parallelism);
-}
-
-fn dispatch_plugins_rabbitmq(
-    probe_id: String,
-    node_id: String,
-    rabbitmq_queue: Option<ServiceStatesProbeNodeRabbitMQ>,
-) {
-    // RabbitMQ plugin enabled?
-    if let Some(ref plugins) = APP_CONF.plugins {
-        if let Some(ref rabbitmq_config) = plugins.rabbitmq {
-            // Any RabbitMQ queue for node?
-            if let Some(ref rabbitmq_queue_value) = rabbitmq_queue {
-                // Check if RabbitMQ queue is loaded
-                let mut rabbitmq_queue_load =
-                    proceed_rabbitmq_queue_probe(rabbitmq_config, rabbitmq_queue_value);
-
-                // Check once again? (the queue can be seen as loaded from check #1, but if we \
-                //   check again a few milliseconds later, it will actually be empty; so not loaded)
-                // Notice: this prevents false-positive 'sick' statuses.
-                if rabbitmq_queue_load.0 == true {
-                    if let Some(retry_delay) = rabbitmq_config.queue_loaded_retry_delay {
-                        debug!(
-                            "rabbitmq queue is loaded, checking once again in {}ms: {}:{} [{}]",
-                            retry_delay, &probe_id, &node_id, rabbitmq_queue_value.queue
-                        );
-
-                        thread::sleep(Duration::from_millis(retry_delay));
-
-                        // Check again if RabbitMQ queue is loaded
-                        rabbitmq_queue_load =
-                            proceed_rabbitmq_queue_probe(rabbitmq_config, rabbitmq_queue_value);
-                    }
-                }
-
-                debug!(
-                    "rabbitmq queue probe result: {}:{} [{}] => (loaded: {:?}, stalled: {:?})",
-                    &probe_id,
-                    &node_id,
-                    rabbitmq_queue_value.queue,
-                    rabbitmq_queue_load.0,
-                    rabbitmq_queue_load.1
-                );
-
-                // Update replica status (write-lock the store)
-                {
-                    let mut store = STORE.write().unwrap();
-
-                    if let Some(ref mut probe) = store.states.probes.get_mut(&probe_id) {
-                        if let Some(ref mut node) = probe.nodes.get_mut(&node_id) {
-                            for (_, replica) in node.replicas.iter_mut() {
-                                if let Some(ref mut replica_load) = replica.load {
-                                    replica_load.queue.loaded = rabbitmq_queue_load.0;
-                                    replica_load.queue.stalled = rabbitmq_queue_load.1;
-                                }
-
-                                // Store RabbitMQ metrics
-                                if let Some((queue_ready, queue_nack)) = rabbitmq_queue_load.2 {
-                                    replica.metrics.rabbitmq =
-                                        Some(ServiceStatesProbeNodeReplicaMetricsRabbitMQ {
-                                            queue_ready: queue_ready,
-                                            queue_nack: queue_nack,
-                                        });
-                                } else {
-                                    replica.metrics.rabbitmq = None
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn run_dispatch_plugins(
-    probe_id: &str,
-    node_id: &str,
-    rabbitmq_queue: Option<ServiceStatesProbeNodeRabbitMQ>,
-) {
-    // Check target RabbitMQ queue?
-    if let Some(ref plugins) = APP_CONF.plugins {
-        if plugins.rabbitmq.is_some() {
-            let self_probe_id = probe_id.to_owned();
-            let self_node_id = node_id.to_owned();
-
-            thread::spawn(move || {
-                dispatch_plugins_rabbitmq(self_probe_id, self_node_id, rabbitmq_queue)
-            });
-        }
-    }
 }
 
 pub fn initialize_store() {
