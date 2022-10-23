@@ -9,7 +9,6 @@ repository = "https://github.com/bbqsrc/overvakt"
 keywords = ["microservices", "infrastructure", "status", "monitor", "slack"]
 categories = ["web-programming"]
 authors = ["Brendan Molloy <brendan@bbqsrc.net>"]
-exclude = ["dev/*"]
 
 [[bin]]
 name = "overvakt"
@@ -26,8 +25,7 @@ toml = "0.5.9"
 base64 = "0.13.1"
 uuid = { version = "1.2.1", features = ["v4", "fast-rng"], default-features = false }
 regex = "1.6.0"
-url = { version = "2.3.1", default-features = false }
-url_serde = { version = "0.2.0", default-features = false }
+url = { version = "2.3.1", features = ["serde"] }
 http = "0.2.8"
 http-serde = "1.1.2"
 indexmap = { version = "1.9.1", features = ["serde-1"] }

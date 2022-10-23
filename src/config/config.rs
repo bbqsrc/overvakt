@@ -19,7 +19,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use url_serde::SerdeUrl;
+use url::Url;
 
 use super::defaults;
 use super::regex::Regex;
@@ -62,14 +62,14 @@ pub struct ConfigBranding {
     #[serde(default = "defaults::branding_page_title")]
     pub page_title: String,
 
-    pub page_url: SerdeUrl,
+    pub page_url: Url,
     pub company_name: String,
     pub icon_color: String,
-    pub icon_url: SerdeUrl,
+    pub icon_url: Url,
     pub logo_color: String,
-    pub logo_url: SerdeUrl,
-    pub website_url: SerdeUrl,
-    pub support_url: SerdeUrl,
+    pub logo_url: Url,
+    pub website_url: Url,
+    pub support_url: Url,
     pub custom_html: Option<String>,
 }
 
@@ -163,7 +163,7 @@ pub struct ConfigPlugins {
 
 #[derive(Deserialize)]
 pub struct ConfigPluginsRabbitMQ {
-    pub api_url: SerdeUrl,
+    pub api_url: Url,
     pub auth_username: String,
     pub auth_password: String,
     pub virtualhost: String,
@@ -208,7 +208,7 @@ pub struct ConfigNotifyTwilio {
 
 #[derive(Deserialize)]
 pub struct ConfigNotifySlack {
-    pub hook_url: SerdeUrl,
+    pub hook_url: Url,
 
     #[serde(default = "defaults::notify_slack_mention_channel")]
     pub mention_channel: bool,
@@ -222,7 +222,7 @@ pub struct ConfigNotifyZulip {
     pub bot_email: String,
     pub bot_api_key: String,
     pub channel: String,
-    pub api_url: SerdeUrl,
+    pub api_url: Url,
 
     #[serde(default = "defaults::notify_generic_reminders_only")]
     pub reminders_only: bool,
@@ -248,7 +248,7 @@ pub struct ConfigNotifyPushover {
 
 #[derive(Deserialize)]
 pub struct ConfigNotifyGotify {
-    pub app_url: SerdeUrl,
+    pub app_url: Url,
     pub app_token: String,
 
     #[serde(default = "defaults::notify_generic_reminders_only")]
@@ -267,7 +267,7 @@ pub struct ConfigNotifyXMPP {
 
 #[derive(Deserialize)]
 pub struct ConfigNotifyMatrix {
-    pub homeserver_url: SerdeUrl,
+    pub homeserver_url: Url,
     pub access_token: String,
     pub room_id: String,
 
@@ -277,7 +277,7 @@ pub struct ConfigNotifyMatrix {
 
 #[derive(Deserialize)]
 pub struct ConfigNotifyWebEx {
-    pub endpoint_url: SerdeUrl,
+    pub endpoint_url: Url,
     pub token: String,
     pub room_id: String,
 
@@ -287,7 +287,7 @@ pub struct ConfigNotifyWebEx {
 
 #[derive(Deserialize)]
 pub struct ConfigNotifyWebHook {
-    pub hook_url: SerdeUrl,
+    pub hook_url: Url,
 }
 
 #[derive(Deserialize)]

@@ -15,10 +15,9 @@
 // Copyright: 2018, Valerian Saliou <valerian@valeriansaliou.name>
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
-use time;
-
 use serde::Serialize;
-use url_serde::SerdeUrl;
+use time;
+use url::Url;
 
 use super::announcements::Announcement;
 use crate::prober::states::ServiceStates;
@@ -98,12 +97,12 @@ pub struct IndexContextConfig {
     pub page_title: String,
     pub company_name: String,
     pub icon_color: String,
-    pub icon_url: SerdeUrl,
+    pub icon_url: Url,
     pub icon_mime: ImageMime,
     pub logo_color: String,
-    pub logo_url: SerdeUrl,
-    pub website_url: SerdeUrl,
-    pub support_url: SerdeUrl,
+    pub logo_url: Url,
+    pub website_url: Url,
+    pub support_url: Url,
     pub custom_html: Option<String>,
 }
 
