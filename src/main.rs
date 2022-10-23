@@ -22,6 +22,7 @@ mod config;
 mod notifier;
 mod prober;
 mod responder;
+mod util;
 
 use std::ops::Deref;
 use std::str::FromStr;
