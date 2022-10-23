@@ -15,7 +15,7 @@ use crate::notifier::generic::Notification;
 use crate::prober::manager::STORE as PROBER_STORE;
 use crate::prober::mode::Mode;
 use crate::prober::status::Status;
-use crate::{APP_CONF, notifier};
+use crate::{notifier, APP_CONF};
 
 #[cfg(feature = "notifier-email")]
 use crate::notifier::email::EmailNotifier;
@@ -378,7 +378,7 @@ fn notify(bumped_states: &BumpedStates) -> Result<(), Vec<Error>> {
         #[cfg(feature = "notifier-email")]
         if let Some(config) = notify.email.as_ref() {
             match Notification::dispatch::<EmailNotifier>(config, &notification) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => {
                     errors.push(Error::Email(e));
                 }

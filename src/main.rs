@@ -116,10 +116,13 @@ fn make_app_args() -> AppArgs {
                 .default_value("./config.cfg"),
         )
         .get_matches();
-    
+
     // Generate owned app arguments
     AppArgs {
-        config: matches.get_one::<String>("config").expect("invalid config value").to_string(),
+        config: matches
+            .get_one::<String>("config")
+            .expect("invalid config value")
+            .to_string(),
     }
 }
 

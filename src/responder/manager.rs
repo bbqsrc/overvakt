@@ -4,7 +4,13 @@
 // Copyright: 2021, Valerian Saliou <valerian@valeriansaliou.name>
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
-use poem::{Server, Route, get, EndpointExt, endpoint::StaticFilesEndpoint, middleware::{NormalizePath, TrailingSlash}, listener::TcpListener};
+use poem::{
+    endpoint::StaticFilesEndpoint,
+    get,
+    listener::TcpListener,
+    middleware::{NormalizePath, TrailingSlash},
+    EndpointExt, Route, Server,
+};
 use tera::Tera;
 
 use super::routes;
@@ -31,7 +37,7 @@ pub async fn run() -> std::io::Result<()> {
         .nest("/assets", StaticFilesEndpoint::new(&APP_CONF.assets.path))
         .data(tera.clone())
         .with(NormalizePath::new(TrailingSlash::Trim));
-    
+
     Server::new(TcpListener::bind(APP_CONF.server.inet))
         .run(app)
         .await?;

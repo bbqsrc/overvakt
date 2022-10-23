@@ -29,7 +29,7 @@ pub struct PushoverNotifier;
 impl GenericNotifier for PushoverNotifier {
     type Config = ConfigNotify;
     type Error = bool;
-    
+
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref pushover) = notify.pushover {
             // Build up the message text

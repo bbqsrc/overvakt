@@ -30,7 +30,7 @@ pub struct TwilioNotifier;
 impl GenericNotifier for TwilioNotifier {
     type Config = ConfigNotify;
     type Error = bool;
-    
+
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref twilio) = notify.twilio {
             // Build up the message text

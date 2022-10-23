@@ -37,7 +37,7 @@ pub struct MatrixNotifier;
 impl GenericNotifier for MatrixNotifier {
     type Config = ConfigNotify;
     type Error = bool;
-    
+
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref matrix) = notify.matrix {
             // Build up the message text

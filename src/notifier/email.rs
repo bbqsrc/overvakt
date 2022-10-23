@@ -6,12 +6,10 @@
 
 use std::time::Duration;
 
+use lettre::message::{Mailbox, MessageBuilder};
 use lettre::transport::smtp;
-use lettre::transport::smtp::{
-    authentication::Credentials, SmtpTransport
-};
+use lettre::transport::smtp::{authentication::Credentials, SmtpTransport};
 use lettre::Transport;
-use lettre::message::{MessageBuilder, Mailbox};
 
 use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotifyEmail;
@@ -35,7 +33,10 @@ impl GenericNotifier for EmailNotifier {
     type Config = ConfigNotifyEmail;
     type Error = Error;
 
-    fn attempt(email_config: &ConfigNotifyEmail, notification: &Notification) -> Result<(), Self::Error> {
+    fn attempt(
+        email_config: &ConfigNotifyEmail,
+        notification: &Notification,
+    ) -> Result<(), Self::Error> {
         let nodes_label = notification.replicas.join(", ");
 
         // Build up the message text
@@ -75,7 +76,7 @@ impl GenericNotifier for EmailNotifier {
             .to(email_config.to.as_str().parse()?)
             .from(Mailbox::new(
                 Some(APP_CONF.branding.page_title.to_string()),
-                email_config.from.as_str().parse()?
+                email_config.from.as_str().parse()?,
             ))
             .subject(format!(
                 "{} | {}",
@@ -94,7 +95,7 @@ impl GenericNotifier for EmailNotifier {
         )?;
 
         transport.send(&email_message)?;
-        
+
         Ok(())
     }
 
@@ -122,10 +123,8 @@ fn acquire_transport(
 
     let relay = relay.timeout(Some(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS)));
     let relay = match (smtp_username, smtp_password) {
-        (Some(username), Some(password)) => {
-            relay.credentials(Credentials::new(username, password))
-        }
-        _ => relay
+        (Some(username), Some(password)) => relay.credentials(Credentials::new(username, password)),
+        _ => relay,
     };
 
     Ok(relay.build())

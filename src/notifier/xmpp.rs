@@ -18,7 +18,7 @@ pub struct XMPPNotifier;
 impl GenericNotifier for XMPPNotifier {
     type Config = ConfigNotify;
     type Error = bool;
-    
+
     fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
         if let Some(ref xmpp) = notify.xmpp {
             let is_sent = RwLock::new(false);

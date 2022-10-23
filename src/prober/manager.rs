@@ -26,7 +26,7 @@ use super::states::{
     ServiceStatesProbeNodeReplicaMetrics,
 };
 use super::status::Status;
-use crate::config::config::{ConfigProbeServiceNodeHTTPMethod};
+use crate::config::config::ConfigProbeServiceNodeHTTPMethod;
 use crate::config::regex::Regex;
 use crate::prober::manager::STORE as PROBER_STORE;
 use crate::prober::mode::Mode;

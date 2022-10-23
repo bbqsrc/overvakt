@@ -5,14 +5,17 @@
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
 use http::header::HeaderName;
-use poem::{web::{Path, Data, Html, StaticFileRequest}, handler, FromRequest, Request, Response, IntoResponse, error::{InternalServerError}};
+use poem::{
+    error::InternalServerError,
+    handler,
+    web::{Data, Html, Path, StaticFileRequest},
+    FromRequest, IntoResponse, Request, Response,
+};
 use tera::Tera;
 
-use super::announcements::{
-    STORE as ANNOUNCEMENTS_STORE,
-};
+use super::announcements::STORE as ANNOUNCEMENTS_STORE;
 use super::context::{IndexContext, INDEX_CONFIG, INDEX_ENVIRONMENT};
-use crate::prober::manager::{STORE as PROBER_STORE};
+use crate::prober::manager::STORE as PROBER_STORE;
 use crate::APP_CONF;
 
 #[handler]
@@ -32,9 +35,7 @@ pub(crate) async fn index(tera: Data<&Tera>) -> poem::Result<Html<String>> {
 
     match render {
         Ok(s) => Ok(Html(s)),
-        Err(e) => {
-            Err(InternalServerError(e))
-        }
+        Err(e) => Err(InternalServerError(e)),
     }
 }
 
@@ -48,11 +49,9 @@ pub(crate) async fn badge(Path(kind): Path<String>) -> Response {
     // Notice acquire lock in a block to release it ASAP (ie. before OS access to file)
     let status = { &PROBER_STORE.read().unwrap().states.status.as_str() };
 
-    let req = StaticFileRequest::from_request_without_body(
-        &Request::builder().finish(),
-    )
-    .await
-    .unwrap();
+    let req = StaticFileRequest::from_request_without_body(&Request::builder().finish())
+        .await
+        .unwrap();
 
     let badge_path = APP_CONF
         .assets
@@ -61,9 +60,7 @@ pub(crate) async fn badge(Path(kind): Path<String>) -> Response {
         .join("badges")
         .join(format!("{}-{}-default.svg", kind, status));
 
-    let resp = req
-        .create_response(&badge_path, false)
-        .unwrap();
+    let resp = req.create_response(&badge_path, false).unwrap();
     let mut resp = resp.into_response();
 
     let headers = resp.headers_mut();
