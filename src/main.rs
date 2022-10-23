@@ -30,6 +30,7 @@ use std::time::Duration;
 
 use clap::{Arg, Command};
 use log::LevelFilter;
+use once_cell::sync::Lazy;
 
 use crate::aggregator::manager::run as run_aggregator;
 use crate::config::config::Config;
@@ -78,10 +79,8 @@ macro_rules! gen_spawn_managed {
     };
 }
 
-lazy_static::lazy_static! {
-    static ref APP_ARGS: AppArgs = make_app_args();
-    static ref APP_CONF: Config = ConfigReader::make();
-}
+static APP_ARGS: Lazy<AppArgs> = Lazy::new(|| make_app_args());
+static APP_CONF: Lazy<Config> = Lazy::new(|| ConfigReader::make());
 
 gen_spawn_managed!(
     "prober-poll",

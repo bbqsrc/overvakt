@@ -22,6 +22,7 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use indexmap::IndexMap;
+use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use ping::ping;
 use reqwest::blocking::Client;
@@ -46,27 +47,30 @@ use crate::APP_CONF;
 const PROBE_HOLD_MILLISECONDS: u64 = 500;
 const PROBE_ICMP_TIMEOUT_SECONDS: u64 = 1;
 
-lazy_static::lazy_static! {
-    pub static ref STORE: Arc<RwLock<Store>> = Arc::new(RwLock::new(Store {
+pub static STORE: Lazy<Arc<RwLock<Store>>> = Lazy::new(|| {
+    Arc::new(RwLock::new(Store {
         states: ServiceStates {
             status: Status::Healthy,
             date: None,
             probes: IndexMap::new(),
             notifier: ServiceStatesNotifier {
                 reminder_backoff_counter: 1,
-                reminder_ignore_until: None
-            }
+                reminder_ignore_until: None,
+            },
         },
         notified: None,
-    }));
-    static ref PROBE_HTTP_CLIENT: Client = Client::builder()
+    }))
+});
+
+static PROBE_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
+    Client::builder()
         .timeout(Duration::from_secs(APP_CONF.metrics.poll_delay_dead))
         .gzip(false)
         .redirect(RedirectPolicy::none())
         .default_headers(make_default_headers())
         .build()
-        .unwrap();
-}
+        .unwrap()
+});
 
 pub struct Store {
     pub states: ServiceStates,

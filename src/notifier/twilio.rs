@@ -18,6 +18,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 
 use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
@@ -28,13 +29,13 @@ static TEXT_MESSAGE_TRUNCATED_INDICATOR: &'static str = "[..]";
 
 const TEXT_MESSAGE_MAXIMUM_LENGTH: usize = 1000;
 
-lazy_static::lazy_static! {
-    static ref TWILIO_HTTP_CLIENT: Client = Client::builder()
+static TWILIO_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
+    Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
         .build()
-        .unwrap();
-}
+        .unwrap()
+});
 
 pub struct TwilioNotifier;
 

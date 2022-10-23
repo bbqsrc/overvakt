@@ -17,20 +17,15 @@
 
 use std::sync::Arc;
 
+use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::Serialize;
-use time::{self, format_description::FormatItem};
 
-lazy_static::lazy_static! {
-    pub static ref STORE: Arc<RwLock<Store>> = Arc::new(RwLock::new(Store {
+pub static STORE: Lazy<Arc<RwLock<Store>>> = Lazy::new(|| {
+    Arc::new(RwLock::new(Store {
         announcements: Vec::new(),
-    }));
-    pub static ref DATE_NOW_FORMATTER: Vec<FormatItem<'static>> = time::format_description::parse(
-        "[day padding:none] [month repr:short] [year], \
-        [hour]:[minute]:[second] UTC[offset_hour sign:mandatory]:[offset_minute]"
-    )
-    .expect("invalid time format");
-}
+    }))
+});
 
 pub struct Store {
     pub announcements: Vec<Announcement>,

@@ -15,6 +15,7 @@
 // Copyright: 2018, Valerian Saliou <valerian@valeriansaliou.name>
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
+use once_cell::sync::Lazy;
 use std::iter::FromIterator;
 use std::thread;
 use std::time::{Duration, SystemTime};
@@ -61,12 +62,12 @@ use crate::notifier::webex::WebExNotifier;
 #[cfg(feature = "notifier-webhook")]
 use crate::notifier::webhook::WebHookNotifier;
 
-lazy_static::lazy_static! {
-    static ref TIME_NOW_FORMATTER: Vec<FormatItem<'static>> = time::format_description::parse(
-        "[hour]:[minute]:[second] UTC[offset_hour sign:mandatory]:[offset_minute]"
+static TIME_NOW_FORMATTER: Lazy<Vec<FormatItem<'static>>> = Lazy::new(|| {
+    time::format_description::parse(
+        "[hour]:[minute]:[second] UTC[offset_hour sign:mandatory]:[offset_minute]",
     )
-    .expect("invalid time format");
-}
+    .expect("invalid time format")
+});
 
 const AGGREGATE_INTERVAL_SECONDS: u64 = 10;
 

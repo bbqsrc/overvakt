@@ -19,25 +19,28 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 
 use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotify;
 use crate::APP_CONF;
 
-lazy_static::lazy_static! {
-    static ref MATRIX_HTTP_CLIENT: Client = Client::builder()
+static MATRIX_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
+    Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
         .build()
-        .unwrap();
-    static ref MATRIX_FORMATTERS: Vec<fn(&Notification<'_>) -> String> = vec![
+        .unwrap()
+});
+static MATRIX_FORMATTERS: Lazy<Vec<fn(&Notification<'_>) -> String>> = Lazy::new(|| {
+    vec![
         format_status,
         format_replicas,
         format_status_page,
-        format_time
-    ];
-}
+        format_time,
+    ]
+});
 
 static MATRIX_MESSAGE_BODY: &'static str = "You received a Övervakt alert.";
 static MATRIX_MESSAGE_TYPE: &'static str = "m.text";

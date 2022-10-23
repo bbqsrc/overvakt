@@ -15,6 +15,7 @@
 // Copyright: 2018, Valerian Saliou <valerian@valeriansaliou.name>
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
+use once_cell::sync::Lazy;
 use serde::Serialize;
 use time;
 use url::Url;
@@ -25,22 +26,22 @@ use crate::APP_CONF;
 
 const LOGO_EXTENSION_SPLIT_SPAN: usize = 4;
 
-lazy_static::lazy_static! {
-    pub static ref INDEX_CONFIG: IndexContextConfig = IndexContextConfig {
-        runtime_version: env!("CARGO_PKG_VERSION").to_string(),
-        page_title: APP_CONF.branding.page_title.to_owned(),
-        company_name: APP_CONF.branding.company_name.to_owned(),
-        icon_color: APP_CONF.branding.icon_color.to_owned(),
-        icon_url: APP_CONF.branding.icon_url.to_owned(),
-        icon_mime: ImageMime::guess_from(APP_CONF.branding.icon_url.as_str()),
-        logo_color: APP_CONF.branding.logo_color.to_owned(),
-        logo_url: APP_CONF.branding.logo_url.to_owned(),
-        website_url: APP_CONF.branding.website_url.to_owned(),
-        support_url: APP_CONF.branding.support_url.to_owned(),
-        custom_html: APP_CONF.branding.custom_html.to_owned(),
-    };
-    pub static ref INDEX_ENVIRONMENT: IndexContextEnvironment = IndexContextEnvironment::default();
-}
+pub static INDEX_CONFIG: Lazy<IndexContextConfig> = Lazy::new(|| IndexContextConfig {
+    runtime_version: env!("CARGO_PKG_VERSION").to_string(),
+    page_title: APP_CONF.branding.page_title.to_owned(),
+    company_name: APP_CONF.branding.company_name.to_owned(),
+    icon_color: APP_CONF.branding.icon_color.to_owned(),
+    icon_url: APP_CONF.branding.icon_url.to_owned(),
+    icon_mime: ImageMime::guess_from(APP_CONF.branding.icon_url.as_str()),
+    logo_color: APP_CONF.branding.logo_color.to_owned(),
+    logo_url: APP_CONF.branding.logo_url.to_owned(),
+    website_url: APP_CONF.branding.website_url.to_owned(),
+    support_url: APP_CONF.branding.support_url.to_owned(),
+    custom_html: APP_CONF.branding.custom_html.to_owned(),
+});
+
+pub static INDEX_ENVIRONMENT: Lazy<IndexContextEnvironment> =
+    Lazy::new(|| IndexContextEnvironment::default());
 
 #[derive(Serialize)]
 pub enum ImageMime {
