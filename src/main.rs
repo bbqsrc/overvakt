@@ -163,7 +163,6 @@ async fn main() -> anyhow::Result<()> {
     // Spawn Web responder (foreground thread)
     responder::manager::run().await?;
 
-    // log::error!("could not start");
     log::info!("shutting down server");
     Ok(())
 }

@@ -15,10 +15,10 @@
 // Copyright: 2018, Valerian Saliou <valerian@valeriansaliou.name>
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
-use std::sync::RwLock;
 use std::time::{Duration, SystemTime};
 
 use libstrophe::{Connection, ConnectionEvent, Context, Stanza};
+use parking_lot::RwLock;
 
 use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotify;
@@ -30,7 +30,7 @@ impl GenericNotifier for XMPPNotifier {
     type Config = ConfigNotify;
     type Error = bool;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
         if let Some(ref xmpp) = notify.xmpp {
             let is_sent = RwLock::new(false);
 
@@ -53,57 +53,58 @@ impl GenericNotifier for XMPPNotifier {
             log::debug!("will send XMPP notification with message: {}", &message);
 
             // Configure connection handler
-            let fn_handle =
-                |context: &Context, connection: &mut Connection, event: ConnectionEvent| {
-                    match event {
-                        ConnectionEvent::Connect => {
-                            log::debug!("connected to XMPP account: {}", &xmpp.from);
+            let fn_handle = |context: &Context<'_, '_>,
+                             connection: &mut Connection<'_, '_>,
+                             event: ConnectionEvent<'_, '_>| {
+                match event {
+                    ConnectionEvent::Connect => {
+                        log::debug!("connected to XMPP account: {}", &xmpp.from);
 
-                            // Acquire UNIX time (used to stamp the message w/ an unique identifier)
-                            let now_timestamp = if let Ok(unix_time) =
-                                SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
+                        // Acquire UNIX time (used to stamp the message w/ an unique identifier)
+                        let now_timestamp = if let Ok(unix_time) =
+                            SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
+                        {
+                            unix_time.as_secs()
+                        } else {
+                            0
+                        };
+
+                        // Send status message
+                        let mut message_stanza = Stanza::new_message(
+                            Some("chat"),
+                            Some(&format!("overvakt-{}", now_timestamp)),
+                            Some(&xmpp.to),
+                        );
+
+                        if message_stanza.set_body(&message).is_ok() == true {
+                            connection.send(&message_stanza);
+
                             {
-                                unix_time.as_secs()
-                            } else {
-                                0
-                            };
+                                let mut is_sent_value = is_sent.write();
 
-                            // Send status message
-                            let mut message_stanza = Stanza::new_message(
-                                Some("chat"),
-                                Some(&format!("overvakt-{}", now_timestamp)),
-                                Some(&xmpp.to),
-                            );
-
-                            if message_stanza.set_body(&message).is_ok() == true {
-                                connection.send(&message_stanza);
-
-                                {
-                                    let mut is_sent_value = is_sent.write().unwrap();
-
-                                    *is_sent_value = true;
-                                }
+                                *is_sent_value = true;
                             }
-
-                            // Disconnect immediately
-                            connection.disconnect();
                         }
-                        ConnectionEvent::Disconnect(err) => {
-                            if let Some(err) = err {
-                                log::error!(
-                                    "connection failure to XMPP account: {} ({:?})",
-                                    &xmpp.from,
-                                    err
-                                );
-                            } else {
-                                log::debug!("disconnected from XMPP account: {}", &xmpp.from);
-                            }
 
-                            context.stop();
-                        }
-                        _ => {}
+                        // Disconnect immediately
+                        connection.disconnect();
                     }
-                };
+                    ConnectionEvent::Disconnect(err) => {
+                        if let Some(err) = err {
+                            log::error!(
+                                "connection failure to XMPP account: {} ({:?})",
+                                &xmpp.from,
+                                err
+                            );
+                        } else {
+                            log::debug!("disconnected from XMPP account: {}", &xmpp.from);
+                        }
+
+                        context.stop();
+                    }
+                    _ => {}
+                }
+            };
 
             // Configure XMPP connection
             let context = Context::new_with_default_logger();
@@ -122,7 +123,7 @@ impl GenericNotifier for XMPPNotifier {
                 // Enter context
                 connection_context.run();
 
-                if *is_sent.read().unwrap() == true {
+                if *is_sent.read() == true {
                     return Ok(());
                 }
             }
@@ -133,7 +134,7 @@ impl GenericNotifier for XMPPNotifier {
         Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool {
+    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
         if let Some(ref xmpp_config) = notify.xmpp {
             notification.expected(xmpp_config.reminders_only)
         } else {

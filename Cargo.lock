@@ -792,6 +792,7 @@ dependencies = [
  "lettre",
  "libstrophe",
  "log",
+ "parking_lot",
  "ping",
  "poem",
  "regex",

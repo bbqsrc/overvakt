@@ -90,7 +90,7 @@ fn check_child_status(parent_status: &Status, child_status: &Status) -> Option<S
 fn scan_and_bump_states() -> Option<BumpedStates> {
     let mut bumped_replicas = Vec::new();
 
-    let mut store = PROBER_STORE.write().unwrap();
+    let mut store = PROBER_STORE.write();
 
     let mut general_status = Status::Healthy;
 

@@ -16,11 +16,10 @@
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
 use std::sync::Arc;
-use std::sync::RwLock;
 
+use parking_lot::RwLock;
 use serde::Serialize;
-use time;
-use time::format_description::FormatItem;
+use time::{self, format_description::FormatItem};
 
 lazy_static::lazy_static! {
     pub static ref STORE: Arc<RwLock<Store>> = Arc::new(RwLock::new(Store {

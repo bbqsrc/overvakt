@@ -41,6 +41,7 @@ thiserror = "1.0.37"
 poem = { version = "1.3.47", features = ["static-files"] }
 tokio = { version = "1.21.2", features = ["rt-multi-thread", "macros", "net", "io-util"] }
 anyhow = "1.0.66"
+parking_lot = "0.12.1"
 
 [features]
 default = ["notifier-email", "notifier-twilio", "notifier-slack", "notifier-zulip", "notifier-telegram", "notifier-pushover", "notifier-gotify", "notifier-matrix", "notifier-webex", "notifier-webhook"]

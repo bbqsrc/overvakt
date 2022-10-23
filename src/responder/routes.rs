@@ -33,8 +33,8 @@ use crate::APP_CONF;
 pub(crate) async fn index(tera: Data<&Tera>) -> poem::Result<Html<String>> {
     // Notice acquire lock in a block to release it ASAP (ie. before template renders)
     let context = IndexContext {
-        states: &PROBER_STORE.read().unwrap().states,
-        announcements: &ANNOUNCEMENTS_STORE.read().unwrap().announcements,
+        states: &PROBER_STORE.read().states,
+        announcements: &ANNOUNCEMENTS_STORE.read().announcements,
         environment: &*INDEX_ENVIRONMENT,
         config: &*INDEX_CONFIG,
     };
@@ -52,13 +52,13 @@ pub(crate) async fn index(tera: Data<&Tera>) -> poem::Result<Html<String>> {
 
 #[handler]
 pub(crate) async fn status_text() -> &'static str {
-    &PROBER_STORE.read().unwrap().states.status.as_str()
+    &PROBER_STORE.read().states.status.as_str()
 }
 
 #[handler]
 pub(crate) async fn badge(Path(kind): Path<String>) -> Response {
     // Notice acquire lock in a block to release it ASAP (ie. before OS access to file)
-    let status = { &PROBER_STORE.read().unwrap().states.status.as_str() };
+    let status = { &PROBER_STORE.read().states.status.as_str() };
 
     let req = StaticFileRequest::from_request_without_body(&Request::builder().finish())
         .await

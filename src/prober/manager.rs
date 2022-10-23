@@ -18,17 +18,17 @@
 use std::cmp::min;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::sync::Arc;
-use std::sync::RwLock;
 use std::thread;
 use std::time::{Duration, SystemTime};
-use time;
 
 use indexmap::IndexMap;
+use parking_lot::RwLock;
 use ping::ping;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, USER_AGENT};
 use reqwest::redirect::Policy as RedirectPolicy;
 use run_script::{self, ScriptOptions};
+use time;
 
 use super::replica::ReplicaURL;
 use super::states::{
@@ -117,7 +117,7 @@ fn map_poll_replicas() -> Vec<ProbeReplica> {
     let mut replica_list = Vec::new();
 
     // Acquire states
-    let states = &PROBER_STORE.read().unwrap().states;
+    let states = &PROBER_STORE.read().states;
 
     // Map replica URLs to be probed
     for (probe_id, probe) in states.probes.iter() {
@@ -156,7 +156,7 @@ fn map_script_replicas() -> Vec<ProbeReplica> {
     let mut replica_list = Vec::new();
 
     // Acquire states
-    let states = &PROBER_STORE.read().unwrap().states;
+    let states = &PROBER_STORE.read().states;
 
     // Map scripts to be probed
     for (probe_id, probe) in states.probes.iter() {
@@ -601,7 +601,7 @@ fn dispatch_replica<'a>(probe_replica: &ProbeReplica) {
 
     // Update replica status (write-lock the store)
     {
-        let mut store = STORE.write().unwrap();
+        let mut store = STORE.write();
 
         if let Some(ref mut probe) = store.states.probes.get_mut(probe_id) {
             if let Some(ref mut node) = probe.nodes.get_mut(node_id) {
@@ -688,7 +688,7 @@ fn dispatch_scripts() {
 
 pub fn initialize_store() {
     // Copy monitored hosts in store (refactor the data structure)
-    let mut store = STORE.write().unwrap();
+    let mut store = STORE.write();
 
     for service in &APP_CONF.probe.service {
         let mut probe = ServiceStatesProbe {
