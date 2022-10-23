@@ -102,13 +102,6 @@ gen_spawn_managed!(
     run_aggregator
 );
 
-// gen_spawn_managed!(
-//     "responder",
-//     spawn_responder,
-//     THREAD_NAME_RESPONDER,
-//     run_responder
-// );
-
 fn make_app_args() -> AppArgs {
     let matches = Command::new(clap::crate_name!())
         .version(clap::crate_version!())
