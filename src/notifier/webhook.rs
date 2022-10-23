@@ -18,13 +18,14 @@
 use std::time::Duration;
 
 use reqwest::blocking::Client;
+use serde::Serialize;
 
 use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotify;
 use crate::prober::status::Status;
 use crate::APP_CONF;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref WEBHOOK_HTTP_CLIENT: Client = Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
@@ -67,7 +68,7 @@ impl GenericNotifier for WebHookNotifier {
     type Config = ConfigNotify;
     type Error = bool;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
         if let Some(ref webhook) = notify.webhook {
             // Acquire hook type
             let hook_type = if notification.startup == true {
@@ -108,7 +109,7 @@ impl GenericNotifier for WebHookNotifier {
         Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, _: &Notification) -> bool {
+    fn can_notify(notify: &ConfigNotify, _: &Notification<'_>) -> bool {
         notify.webhook.is_some()
     }
 

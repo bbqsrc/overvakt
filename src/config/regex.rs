@@ -43,7 +43,7 @@ impl<'de> Deserialize<'de> for Regex {
         impl<'de> Visitor<'de> for RegexVisitor {
             type Value = Regex;
 
-            fn expecting(&self, format: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, format: &mut fmt::Formatter<'_>) -> fmt::Result {
                 format.write_str("a regular expression pattern")
             }
 

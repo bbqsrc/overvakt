@@ -25,7 +25,7 @@ use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotify;
 use crate::APP_CONF;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref GOTIFY_HTTP_CLIENT: Client = Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
@@ -39,7 +39,7 @@ impl GenericNotifier for GotifyNotifier {
     type Config = ConfigNotify;
     type Error = bool;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
         if let Some(ref gotify) = notify.gotify {
             // Build up the message text
             let mut message = String::new();
@@ -57,7 +57,7 @@ impl GenericNotifier for GotifyNotifier {
             message.push_str(&format!("Nodes:\n{}\n", &notification.replicas.join("\n")));
             message.push_str(&format!("Time: {}", &notification.time));
 
-            debug!("will send Gotify notification with message: {}", &message);
+            log::debug!("will send Gotify notification with message: {}", &message);
 
             // Generate URL
             // See: https://gotify.net/docs/pushmsg
@@ -94,7 +94,7 @@ impl GenericNotifier for GotifyNotifier {
         Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool {
+    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
         if let Some(ref gotify_config) = notify.gotify {
             notification.expected(gotify_config.reminders_only)
         } else {

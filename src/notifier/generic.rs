@@ -36,18 +36,18 @@ pub trait GenericNotifier {
     type Config;
     type Error;
 
-    fn attempt(notify: &Self::Config, notification: &Notification) -> Result<(), Self::Error>;
-    fn can_notify(notify: &Self::Config, notification: &Notification) -> bool;
+    fn attempt(notify: &Self::Config, notification: &Notification<'_>) -> Result<(), Self::Error>;
+    fn can_notify(notify: &Self::Config, notification: &Notification<'_>) -> bool;
     fn name() -> &'static str;
 }
 
 impl<'a> Notification<'a> {
     pub fn dispatch<N: GenericNotifier>(
         notify: &N::Config,
-        notification: &Notification,
+        notification: &Notification<'_>,
     ) -> Result<(), Vec<N::Error>> {
         if N::can_notify(notify, notification) == true {
-            info!(
+            log::info!(
                 "dispatch {} notification for status: {:?} and replicas: {:?}",
                 N::name(),
                 notification.status,
@@ -56,7 +56,7 @@ impl<'a> Notification<'a> {
 
             let mut errors = vec![];
             for try_index in 1..(DISPATCH_TRY_ATTEMPT_TIMES + 1) {
-                debug!(
+                log::debug!(
                     "dispatch {} notification attempt: #{}",
                     N::name(),
                     try_index
@@ -70,7 +70,7 @@ impl<'a> Notification<'a> {
                 // Attempt notification dispatch
                 match N::attempt(notify, notification) {
                     Ok(_) => {
-                        debug!("dispatched notification to provider: {}", N::name());
+                        log::debug!("dispatched notification to provider: {}", N::name());
                         return Ok(());
                     }
                     Err(e) => {
@@ -79,11 +79,11 @@ impl<'a> Notification<'a> {
                 }
             }
 
-            error!("failed dispatching notification to provider: {}", N::name());
+            log::error!("failed dispatching notification to provider: {}", N::name());
             return Err(errors);
         }
 
-        debug!("did not dispatch notification to provider: {}", N::name());
+        log::debug!("did not dispatch notification to provider: {}", N::name());
 
         Ok(())
     }

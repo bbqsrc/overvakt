@@ -19,13 +19,14 @@
 use std::time::Duration;
 
 use reqwest::blocking::Client;
+use serde::Serialize;
 
 use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotify;
 use crate::prober::status::Status;
 use crate::APP_CONF;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref ZULIP_HTTP_CLIENT: Client = Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
@@ -48,7 +49,7 @@ impl GenericNotifier for ZulipNotifier {
     type Config = ConfigNotify;
     type Error = bool;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
         if let Some(ref zulip) = notify.zulip {
             let status_label = format!("{:?}", notification.status);
 
@@ -99,7 +100,7 @@ impl GenericNotifier for ZulipNotifier {
                 if response_inner.status().is_success() == true {
                     return Ok(());
                 } else {
-                    warn!(
+                    log::warn!(
                         "could not submit data to zulip: {:?}",
                         response_inner.text()
                     );
@@ -112,7 +113,7 @@ impl GenericNotifier for ZulipNotifier {
         Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool {
+    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
         if let Some(ref zulip_config) = notify.zulip {
             notification.expected(zulip_config.reminders_only)
         } else {

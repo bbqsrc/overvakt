@@ -25,13 +25,13 @@ use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
 use crate::config::config::ConfigNotify;
 use crate::APP_CONF;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref MATRIX_HTTP_CLIENT: Client = Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
         .build()
         .unwrap();
-    static ref MATRIX_FORMATTERS: Vec<fn(&Notification) -> String> = vec![
+    static ref MATRIX_FORMATTERS: Vec<fn(&Notification<'_>) -> String> = vec![
         format_status,
         format_replicas,
         format_status_page,
@@ -49,12 +49,12 @@ impl GenericNotifier for MatrixNotifier {
     type Config = ConfigNotify;
     type Error = bool;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
         if let Some(ref matrix) = notify.matrix {
             // Build up the message text
             let message = format_message(notification);
 
-            debug!("will send Matrix notification with message: {}", &message);
+            log::debug!("will send Matrix notification with message: {}", &message);
 
             // Generate URL
             // See: https://matrix.org/docs/guides/client-server-api#sending-messages
@@ -90,7 +90,7 @@ impl GenericNotifier for MatrixNotifier {
         Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool {
+    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
         if let Some(ref matrix_config) = notify.matrix {
             notification.expected(matrix_config.reminders_only)
         } else {
@@ -103,7 +103,7 @@ impl GenericNotifier for MatrixNotifier {
     }
 }
 
-fn format_status(notification: &Notification) -> String {
+fn format_status(notification: &Notification<'_>) -> String {
     let msg = if notification.startup == true {
         "Status started up, as"
     } else if notification.changed == true {
@@ -120,7 +120,7 @@ fn format_status(notification: &Notification) -> String {
     )
 }
 
-fn format_replicas(notification: &Notification) -> String {
+fn format_replicas(notification: &Notification<'_>) -> String {
     let replicas = notification
         .replicas
         .iter()
@@ -147,18 +147,18 @@ fn format_replicas(notification: &Notification) -> String {
     }
 }
 
-fn format_status_page(_: &Notification) -> String {
+fn format_status_page(_: &Notification<'_>) -> String {
     format!(
         "<p>Status page: {}</p>",
         APP_CONF.branding.page_url.as_str()
     )
 }
 
-fn format_time(notification: &Notification) -> String {
+fn format_time(notification: &Notification<'_>) -> String {
     format!("<p>Time: {}</p>", notification.time)
 }
 
-fn format_message(notification: &Notification) -> String {
+fn format_message(notification: &Notification<'_>) -> String {
     MATRIX_FORMATTERS
         .iter()
         .fold(String::new(), |mut accumulator, formatter| {

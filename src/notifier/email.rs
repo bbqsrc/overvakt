@@ -46,7 +46,7 @@ impl GenericNotifier for EmailNotifier {
 
     fn attempt(
         email_config: &ConfigNotifyEmail,
-        notification: &Notification,
+        notification: &Notification<'_>,
     ) -> Result<(), Self::Error> {
         let nodes_label = notification.replicas.join(", ");
 
@@ -80,7 +80,7 @@ impl GenericNotifier for EmailNotifier {
         message.push_str("\n");
         message.push_str("To unsubscribe, please edit your status page configuration.");
 
-        debug!("will send email notification with message: {}", &message);
+        log::debug!("will send email notification with message: {}", &message);
 
         // Build up the email
         let email_message = MessageBuilder::new()
@@ -110,7 +110,7 @@ impl GenericNotifier for EmailNotifier {
         Ok(())
     }
 
-    fn can_notify(email_config: &ConfigNotifyEmail, notification: &Notification) -> bool {
+    fn can_notify(email_config: &ConfigNotifyEmail, notification: &Notification<'_>) -> bool {
         notification.expected(email_config.reminders_only)
     }
 

@@ -28,7 +28,7 @@ static TEXT_MESSAGE_TRUNCATED_INDICATOR: &'static str = "[..]";
 
 const TEXT_MESSAGE_MAXIMUM_LENGTH: usize = 1000;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref TWILIO_HTTP_CLIENT: Client = Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
@@ -42,7 +42,7 @@ impl GenericNotifier for TwilioNotifier {
     type Config = ConfigNotify;
     type Error = bool;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
         if let Some(ref twilio) = notify.twilio {
             // Build up the message text
             let mut message = String::new();
@@ -62,7 +62,7 @@ impl GenericNotifier for TwilioNotifier {
             // Trim down message to a maximum length? (most SMS receivers and networks support \
             //   up to 1600 characters by re-building message segments)
             if message.len() > TEXT_MESSAGE_MAXIMUM_LENGTH {
-                debug!(
+                log::debug!(
                     "message for Twilio notification is too long, trimming to length: {}",
                     TEXT_MESSAGE_MAXIMUM_LENGTH
                 );
@@ -73,7 +73,7 @@ impl GenericNotifier for TwilioNotifier {
                 message.push_str(TEXT_MESSAGE_TRUNCATED_INDICATOR);
             }
 
-            debug!("will send Twilio notification with message: {}", &message);
+            log::debug!("will send Twilio notification with message: {}", &message);
 
             let mut has_sub_delivery_failure = false;
 
@@ -115,7 +115,7 @@ impl GenericNotifier for TwilioNotifier {
         Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool {
+    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
         if let Some(ref twilio_config) = notify.twilio {
             notification.expected(twilio_config.reminders_only)
         } else {

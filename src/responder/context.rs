@@ -17,6 +17,7 @@
 
 use time;
 
+use serde::Serialize;
 use url_serde::SerdeUrl;
 
 use super::announcements::Announcement;
@@ -25,7 +26,7 @@ use crate::APP_CONF;
 
 const LOGO_EXTENSION_SPLIT_SPAN: usize = 4;
 
-lazy_static! {
+lazy_static::lazy_static! {
     pub static ref INDEX_CONFIG: IndexContextConfig = IndexContextConfig {
         runtime_version: env!("CARGO_PKG_VERSION").to_string(),
         page_title: APP_CONF.branding.page_title.to_owned(),

@@ -18,6 +18,7 @@
 use std::time::{Duration, SystemTime};
 
 use indexmap::IndexMap;
+use serde::Serialize;
 
 use super::mode::Mode;
 use super::replica::ReplicaURL;

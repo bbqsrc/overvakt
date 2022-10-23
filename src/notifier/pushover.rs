@@ -25,7 +25,7 @@ use crate::config::config::ConfigNotify;
 use crate::prober::status::Status;
 use crate::APP_CONF;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref PUSHOVER_HTTP_CLIENT: Client = Client::builder()
         .timeout(Duration::from_secs(DISPATCH_TIMEOUT_SECONDS))
         .gzip(true)
@@ -41,7 +41,7 @@ impl GenericNotifier for PushoverNotifier {
     type Config = ConfigNotify;
     type Error = bool;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
         if let Some(ref pushover) = notify.pushover {
             // Build up the message text
             let mut message = String::new();
@@ -63,7 +63,7 @@ impl GenericNotifier for PushoverNotifier {
             ));
             message.push_str(&format!("<u>Time:</u> {}", &notification.time));
 
-            debug!("will send Pushover notification with message: {}", &message);
+            log::debug!("will send Pushover notification with message: {}", &message);
 
             let mut has_sub_delivery_failure = false;
 
@@ -117,7 +117,7 @@ impl GenericNotifier for PushoverNotifier {
         Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification) -> bool {
+    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
         if let Some(ref pushover_config) = notify.pushover {
             notification.expected(pushover_config.reminders_only)
         } else {

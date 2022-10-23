@@ -18,6 +18,7 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use serde::{Deserialize, Serialize};
 use url_serde::SerdeUrl;
 
 use super::defaults;

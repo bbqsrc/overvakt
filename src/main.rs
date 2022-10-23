@@ -15,12 +15,7 @@
 // Copyright: 2018, Valerian Saliou <valerian@valeriansaliou.name>
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate serde_derive;
+#![deny(rust_2018_idioms)]
 
 mod aggregator;
 mod config;
@@ -57,7 +52,7 @@ pub static THREAD_NAME_RESPONDER: &'static str = "overvakt-responder";
 macro_rules! gen_spawn_managed {
     ($name:expr, $method:ident, $thread_name:ident, $managed_fn:ident) => {
         fn $method() {
-            debug!("spawn managed thread: {}", $name);
+            log::debug!("spawn managed thread: {}", $name);
 
             let worker = thread::Builder::new()
                 .name($thread_name.to_string())
@@ -72,7 +67,7 @@ macro_rules! gen_spawn_managed {
 
             // Worker thread crashed?
             if has_error == true {
-                error!("managed thread crashed ({}), setting it up again", $name);
+                log::error!("managed thread crashed ({}), setting it up again", $name);
 
                 // Prevents thread start loop floods
                 thread::sleep(Duration::from_secs(1));
@@ -83,7 +78,7 @@ macro_rules! gen_spawn_managed {
     };
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref APP_ARGS: AppArgs = make_app_args();
     static ref APP_CONF: Config = ConfigReader::make();
 }
@@ -157,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
         LevelFilter::from_str(&APP_CONF.server.log_level).expect("invalid log level"),
     );
 
-    info!("starting up");
+    log::info!("starting up");
 
     // Ensure all states are bound
     ensure_states();
@@ -175,7 +170,7 @@ async fn main() -> anyhow::Result<()> {
     // Spawn Web responder (foreground thread)
     responder::manager::run().await?;
 
-    // error!("could not start");
-    info!("shutting down server");
+    // log::error!("could not start");
+    log::info!("shutting down server");
     Ok(())
 }
