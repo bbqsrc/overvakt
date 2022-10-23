@@ -5,6 +5,10 @@ on:
 
 name: Build and Release
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   build-releases:
     runs-on: ubuntu-latest
