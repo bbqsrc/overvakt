@@ -24,6 +24,7 @@ use url::Url;
 use super::defaults;
 use super::regex::Regex;
 use crate::prober::mode::Mode;
+use crate::prober::states::SocketType;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -31,7 +32,8 @@ pub struct Config {
     pub assets: ConfigAssets,
     pub branding: ConfigBranding,
     pub metrics: ConfigMetrics,
-    pub plugins: Option<ConfigPlugins>,
+    #[serde(default)]
+    pub plugins: ConfigPlugins,
     pub notify: Option<ConfigNotify>,
     pub probe: ConfigProbe,
 }
@@ -156,9 +158,16 @@ pub enum ConfigNotifyReminderBackoffFunction {
     Cubic = 3,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct ConfigPlugins {
     pub rabbitmq: Option<ConfigPluginsRabbitMQ>,
+    pub icmp: Option<ConfigPluginsIcmp>,
+}
+
+#[derive(Deserialize)]
+pub struct ConfigPluginsIcmp {
+    #[serde(default)]
+    pub socket_type: SocketType,
 }
 
 #[derive(Deserialize)]

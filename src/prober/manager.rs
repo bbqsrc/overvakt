@@ -262,12 +262,19 @@ fn proceed_replica_probe_poll(
 }
 
 fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
-    // Notice: a dummy port of value '0' is set here, so that we can resolve the host to an actual \
+    // Notice: a dummy port of value '0' is set here, so that we can resolve the host to an actual
     //   IP address using the standard library, which avoids depending on an additional library.
     let address_results = (host, 0).to_socket_addrs();
 
     // Storage variable for the maximum round-trip-time found for received ping responses
     let mut maximum_rtt = None;
+
+    let socket_type = APP_CONF
+        .plugins
+        .icmp
+        .as_ref()
+        .map(|x| x.socket_type)
+        .unwrap_or_default();
 
     match address_results {
         Ok(address) => {
@@ -308,7 +315,15 @@ fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
                     let ping_start_time = SystemTime::now();
 
                     // Ping target IP address
-                    match ping(address_ip, Some(pinger_timeout), None, None, None, None) {
+                    match ping(
+                        address_ip,
+                        Some(pinger_timeout),
+                        None,
+                        None,
+                        None,
+                        None,
+                        socket2::Type::from(socket_type),
+                    ) {
                         Ok(_) => {
                             log::debug!(
                                 "got prober poll response for icmp target: {} from host: {}",

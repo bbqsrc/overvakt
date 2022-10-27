@@ -18,7 +18,7 @@
 use std::time::{Duration, SystemTime};
 
 use indexmap::IndexMap;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::mode::Mode;
 use super::replica::ReplicaURL;
@@ -39,6 +39,28 @@ pub struct ServiceStatesProbe {
     pub label: String,
     pub status: Status,
     pub nodes: IndexMap<String, ServiceStatesProbeNode>,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SocketType {
+    Raw,
+    Dgram,
+}
+
+impl Default for SocketType {
+    fn default() -> Self {
+        Self::Raw
+    }
+}
+
+impl From<SocketType> for socket2::Type {
+    fn from(ty: SocketType) -> Self {
+        match ty {
+            SocketType::Raw => socket2::Type::RAW,
+            SocketType::Dgram => socket2::Type::DGRAM,
+        }
+    }
 }
 
 #[derive(Serialize)]

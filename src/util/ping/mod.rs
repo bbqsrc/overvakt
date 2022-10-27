@@ -6,7 +6,8 @@ use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 use rand::random;
-use socket2::{Domain, Protocol, Socket, Type};
+pub use socket2::Type;
+use socket2::{Domain, Protocol, Socket};
 
 use errors::Error;
 use packet::{EchoReply, EchoRequest, IcmpV4, IcmpV6, IpV4Packet, ICMP_HEADER_SIZE};
@@ -22,6 +23,7 @@ pub fn ping(
     ident: Option<u16>,
     seq_cnt: Option<u16>,
     payload: Option<&Token>,
+    socket_type: Type,
 ) -> Result<(), Error> {
     let timeout = match timeout {
         Some(timeout) => Some(timeout),
@@ -43,12 +45,12 @@ pub fn ping(
         if request.encode::<IcmpV4>(&mut buffer[..]).is_err() {
             return Err(Error::InternalError.into());
         }
-        Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::ICMPV4))?
+        Socket::new(Domain::IPV4, socket_type, Some(Protocol::ICMPV4))?
     } else {
         if request.encode::<IcmpV6>(&mut buffer[..]).is_err() {
             return Err(Error::InternalError.into());
         }
-        Socket::new(Domain::IPV6, Type::DGRAM, Some(Protocol::ICMPV6))?
+        Socket::new(Domain::IPV6, socket_type, Some(Protocol::ICMPV6))?
     };
 
     socket.set_ttl(ttl.unwrap_or(64))?;
