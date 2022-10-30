@@ -85,7 +85,7 @@ impl Notifier for SlackNotifier {
         let payload_text = if slack.mention_channel {
             format!("<!channel> {}", &message_text)
         } else {
-            message_text.to_owned()
+            message_text.clone()
         };
 
         // Build paylaod

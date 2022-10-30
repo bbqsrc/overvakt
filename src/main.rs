@@ -138,7 +138,7 @@ fn make_app_args() -> AppArgs {
         config: matches
             .get_one::<PathBuf>("config")
             .expect("invalid config value")
-            .to_path_buf(),
+            .clone(),
     }
 }
 

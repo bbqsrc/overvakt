@@ -27,16 +27,16 @@ const LOGO_EXTENSION_SPLIT_SPAN: usize = 4;
 
 pub static INDEX_CONFIG: Lazy<IndexContextConfig> = Lazy::new(|| IndexContextConfig {
     runtime_version: env!("CARGO_PKG_VERSION").to_string(),
-    page_title: APP_CONF.branding.page_title.to_owned(),
-    company_name: APP_CONF.branding.company_name.to_owned(),
-    icon_color: APP_CONF.branding.icon_color.to_owned(),
-    icon_url: APP_CONF.branding.icon_url.to_owned(),
+    page_title: APP_CONF.branding.page_title.clone(),
+    company_name: APP_CONF.branding.company_name.clone(),
+    icon_color: APP_CONF.branding.icon_color.clone(),
+    icon_url: APP_CONF.branding.icon_url.clone(),
     icon_mime: ImageMime::guess_from(APP_CONF.branding.icon_url.as_str()),
-    logo_color: APP_CONF.branding.logo_color.to_owned(),
-    logo_url: APP_CONF.branding.logo_url.to_owned(),
-    website_url: APP_CONF.branding.website_url.to_owned(),
-    support_url: APP_CONF.branding.support_url.to_owned(),
-    custom_html: APP_CONF.branding.custom_html.to_owned(),
+    logo_color: APP_CONF.branding.logo_color.clone(),
+    logo_url: APP_CONF.branding.logo_url.clone(),
+    website_url: APP_CONF.branding.website_url.clone(),
+    support_url: APP_CONF.branding.support_url.clone(),
+    custom_html: APP_CONF.branding.custom_html.clone(),
 });
 
 pub static INDEX_ENVIRONMENT: Lazy<IndexContextEnvironment> =

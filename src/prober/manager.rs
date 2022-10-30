@@ -135,16 +135,16 @@ fn map_poll_replicas() -> Vec<ProbeReplica> {
                         //   (eg. the reporter HTTP API).
                         replica_list.push(ProbeReplica::Poll(
                             ProbeReplicaTarget {
-                                probe_id: probe_id.to_owned(),
-                                node_id: node_id.to_owned(),
-                                replica_id: replica_id.to_owned(),
+                                probe_id: probe_id.clone(),
+                                node_id: node_id.clone(),
+                                replica_id: replica_id.clone(),
                             },
                             ProbeReplicaPoll {
-                                replica_url: replica_url.to_owned(),
-                                http_headers: node.http_headers.to_owned(),
-                                http_method: node.http_method.to_owned(),
-                                http_body: node.http_body.to_owned(),
-                                body_match: node.http_body_healthy_match.to_owned(),
+                                replica_url: replica_url.clone(),
+                                http_headers: node.http_headers.clone(),
+                                http_method: node.http_method,
+                                http_body: node.http_body.clone(),
+                                body_match: node.http_body_healthy_match.clone(),
                             },
                         ));
                     }
@@ -172,12 +172,12 @@ fn map_script_replicas() -> Vec<ProbeReplica> {
                         //   the script execution is performed. Same as in `map_poll_replicas()`.
                         replica_list.push(ProbeReplica::Script(
                             ProbeReplicaTarget {
-                                probe_id: probe_id.to_owned(),
-                                node_id: node_id.to_owned(),
-                                replica_id: replica_id.to_owned(),
+                                probe_id: probe_id.clone(),
+                                node_id: node_id.clone(),
+                                replica_id: replica_id.clone(),
                             },
                             ProbeReplicaScript {
-                                script: replica_script.to_owned(),
+                                script: replica_script.clone(),
                             },
                         ));
                     }
@@ -192,7 +192,7 @@ fn map_script_replicas() -> Vec<ProbeReplica> {
 fn proceed_replica_probe_poll_with_retry(
     replica_url: &ReplicaUrl,
     http_headers: &HeaderMap,
-    http_method: &Option<HttpMethod>,
+    http_method: Option<HttpMethod>,
     http_body: &Option<String>,
     body_match: &Option<Regex>,
 ) -> (Status, Option<Duration>) {
@@ -228,7 +228,7 @@ fn proceed_replica_probe_poll_with_retry(
 fn proceed_replica_probe_poll(
     replica_url: &ReplicaUrl,
     http_headers: &HeaderMap,
-    http_method: &Option<HttpMethod>,
+    http_method: Option<HttpMethod>,
     http_body: &Option<String>,
     body_match: &Option<Regex>,
 ) -> (Status, Duration) {
@@ -440,7 +440,7 @@ fn proceed_replica_probe_poll_tcp(host: &str, port: u16) -> (bool, Option<Durati
 fn proceed_replica_probe_poll_http(
     url: &str,
     http_headers: &HeaderMap,
-    http_method: &Option<HttpMethod>,
+    http_method: Option<HttpMethod>,
     http_body: &Option<String>,
     body_match: &Option<Regex>,
 ) -> (bool, Option<Duration>) {
@@ -494,7 +494,7 @@ fn proceed_replica_probe_poll_http(
                 ))
         }
     }
-    .headers(http_headers.to_owned())
+    .headers(http_headers.clone())
     .send();
 
     match response {
@@ -592,7 +592,7 @@ fn dispatch_replica(probe_replica: &ProbeReplica) {
             proceed_replica_probe_poll_with_retry(
                 &probe_replica_poll.replica_url,
                 &probe_replica_poll.http_headers,
-                &probe_replica_poll.http_method,
+                probe_replica_poll.http_method,
                 &probe_replica_poll.http_body,
                 &probe_replica_poll.body_match,
             )
@@ -631,7 +631,7 @@ fn dispatch_replica(probe_replica: &ProbeReplica) {
     }
 }
 
-fn dispatch_replicas_in_threads(replicas: Vec<ProbeReplica>, parallelism: u16) {
+fn dispatch_replicas_in_threads(replicas: &[ProbeReplica], parallelism: u16) {
     // Acquire chunk size (round to the highest unit if there is a remainder)
     let mut chunk_size = replicas.len() / parallelism as usize;
 
@@ -690,12 +690,12 @@ fn dispatch_replicas_in_threads(replicas: Vec<ProbeReplica>, parallelism: u16) {
 
 fn dispatch_polls() {
     // Probe hosts
-    dispatch_replicas_in_threads(map_poll_replicas(), APP_CONF.metrics.poll_parallelism);
+    dispatch_replicas_in_threads(&map_poll_replicas(), APP_CONF.metrics.poll_parallelism);
 }
 
 fn dispatch_scripts() {
     // Run scripts
-    dispatch_replicas_in_threads(map_script_replicas(), APP_CONF.metrics.script_parallelism);
+    dispatch_replicas_in_threads(&map_script_replicas(), APP_CONF.metrics.script_parallelism);
 }
 
 pub fn initialize_store() {
@@ -704,8 +704,8 @@ pub fn initialize_store() {
 
     for service in &APP_CONF.probe.service {
         let mut probe = ServiceStatesProbe {
-            id: service.id.to_owned(),
-            label: service.label.to_owned(),
+            id: service.id.clone(),
+            label: service.label.clone(),
             status: Status::Healthy,
             nodes: IndexMap::new(),
         };
@@ -717,16 +717,16 @@ pub fn initialize_store() {
 
             let mut probe_node = ServiceStatesProbeNode {
                 status: Status::Healthy,
-                label: node.label.to_owned(),
-                mode: node.mode.to_owned(),
+                label: node.label.clone(),
+                mode: node.mode.clone(),
                 replicas: IndexMap::new(),
-                http_headers: node.http_headers.to_owned(),
-                http_method: node.http_method.to_owned(),
-                http_body: node.http_body.to_owned(),
-                http_body_healthy_match: node.http_body_healthy_match.to_owned(),
+                http_headers: node.http_headers.clone(),
+                http_method: node.http_method,
+                http_body: node.http_body.clone(),
+                http_body_healthy_match: node.http_body_healthy_match.clone(),
                 rabbitmq: node.rabbitmq_queue.as_ref().map(|queue| {
                     ServiceStatesProbeNodeRabbitMQ {
-                        queue: queue.to_owned(),
+                        queue: queue.clone(),
                         queue_nack_healthy_below: node.rabbitmq_queue_nack_healthy_below,
                         queue_nack_dead_above: node.rabbitmq_queue_nack_dead_above,
                     }
@@ -782,7 +782,7 @@ pub fn initialize_store() {
                         ServiceStatesProbeNodeReplica {
                             status: Status::Healthy,
                             url: None,
-                            script: Some(script.to_owned()),
+                            script: Some(script.clone()),
                             metrics: ServiceStatesProbeNodeReplicaMetrics::default(),
                             load: None,
                             report: None,
@@ -791,10 +791,10 @@ pub fn initialize_store() {
                 }
             }
 
-            probe.nodes.insert(node.id.to_owned(), probe_node);
+            probe.nodes.insert(node.id.clone(), probe_node);
         }
 
-        store.states.probes.insert(service.id.to_owned(), probe);
+        store.states.probes.insert(service.id.clone(), probe);
     }
 
     tracing::info!("initialized prober store");

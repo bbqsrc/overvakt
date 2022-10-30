@@ -31,12 +31,12 @@ impl ReplicaUrl {
         match Url::parse(raw_url) {
             Ok(url) => match url.scheme() {
                 "icmp" => match (url.host(), url.port(), url.path_segments()) {
-                    (Some(host), None, None) => Ok(ReplicaUrl::Icmp(Self::host_string(host))),
+                    (Some(host), None, None) => Ok(ReplicaUrl::Icmp(Self::host_string(&host))),
                     _ => Err(()),
                 },
                 "tcp" => match (url.host(), url.port(), url.path_segments()) {
                     (Some(host), Some(port), None) => {
-                        Ok(ReplicaUrl::Tcp(Self::host_string(host), port))
+                        Ok(ReplicaUrl::Tcp(Self::host_string(&host), port))
                     }
                     _ => Err(()),
                 },
@@ -48,7 +48,7 @@ impl ReplicaUrl {
         }
     }
 
-    fn host_string(host: Host<&str>) -> String {
+    fn host_string(host: &Host<&str>) -> String {
         // Convert internal host value into string. This is especially useful for IPv6 addresses, \
         //   which we need returned in '::1' format; as they would otherwise be returned in \
         //   '[::1]' format using built-in top-level 'to_string()' method on the 'Host' trait. The \

@@ -56,7 +56,7 @@ impl<'a> Notification<'a> {
             );
 
             let mut errors = vec![];
-            for try_index in 1..(DISPATCH_TRY_ATTEMPT_TIMES + 1) {
+            for try_index in 1..=DISPATCH_TRY_ATTEMPT_TIMES {
                 tracing::debug!(
                     "dispatch {} notification attempt: #{}",
                     N::name(),
@@ -65,7 +65,7 @@ impl<'a> Notification<'a> {
 
                 // Hold on for next try
                 if try_index > 1 {
-                    thread::sleep(Duration::from_secs(DISPATCH_TRY_WAIT_SECONDS))
+                    thread::sleep(Duration::from_secs(DISPATCH_TRY_WAIT_SECONDS));
                 }
 
                 // Attempt notification dispatch

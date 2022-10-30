@@ -30,7 +30,7 @@ use crate::prober::manager::STORE as PROBER_STORE;
 use crate::APP_CONF;
 
 #[handler]
-pub(crate) async fn index(tera: Data<&Tera>) -> poem::Result<Html<String>> {
+pub(crate) fn index(tera: Data<&Tera>) -> poem::Result<Html<String>> {
     // Notice acquire lock in a block to release it ASAP (ie. before template renders)
     let context = IndexContext {
         states: &PROBER_STORE.read().states,
@@ -51,7 +51,7 @@ pub(crate) async fn index(tera: Data<&Tera>) -> poem::Result<Html<String>> {
 }
 
 #[handler]
-pub(crate) async fn status_text() -> &'static str {
+pub(crate) fn status_text() -> &'static str {
     PROBER_STORE.read().states.status.as_str()
 }
 

@@ -165,7 +165,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                     Mode::Local => {
                         // Assign stored status by default ('local' nodes report their status \
                         //   themselves)
-                        replica_status = replica.status.to_owned();
+                        replica_status = replica.status.clone();
 
                         // Compare delays and compute a new status?
                         if let Some(ref replica_report) = replica.report {
@@ -188,7 +188,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                     }
                     _ => {
                         // Forward stored status (eg. 'poll' or 'script' nodes)
-                        replica_status = replica.status.to_owned();
+                        replica_status = replica.status.clone();
                     }
                 }
 
@@ -275,7 +275,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                 let reminder_ignore_until = store.states.notifier.reminder_ignore_until;
                 let reminder_interval_backoff = Duration::from_secs(
                     reminder_interval
-                        * (reminder_backoff_counter as u64)
+                        * u64::from(reminder_backoff_counter)
                             .pow(notify.reminder_backoff_function as u32),
                 );
 
@@ -330,7 +330,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
     }
 
     // Bump stored values
-    store.states.status = general_status.to_owned();
+    store.states.status = general_status.clone();
     store.states.date = Some(time_now_as_string());
 
     if should_notify {
@@ -387,7 +387,7 @@ fn notify(bumped_states: &BumpedStates) -> Result<(), Vec<Error>> {
     let notification = Notification {
         status: &bumped_states.status,
         time: time_now_as_string(),
-        replicas: Vec::from_iter(bumped_states.replicas.iter().map(String::as_str)),
+        replicas: bumped_states.replicas.iter().map(String::as_str).collect(),
         changed: bumped_states.changed,
         startup: bumped_states.startup,
     };

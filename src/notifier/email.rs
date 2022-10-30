@@ -99,8 +99,8 @@ impl Notifier for EmailNotifier {
         let transport = acquire_transport(
             &email_config.smtp_host,
             email_config.smtp_port,
-            email_config.smtp_username.to_owned(),
-            email_config.smtp_password.to_owned(),
+            email_config.smtp_username.clone(),
+            email_config.smtp_password.clone(),
             email_config.smtp_encrypt,
         )?;
 
