@@ -449,7 +449,7 @@ fn proceed_replica_probe_poll_http(
 
     // Generate URL with cache buster, to bypass any upstream cache (eg. CDN cache layer)
     let url_bang = format!(
-        "{}{}{}",
+        "{}{}_overvakt={}",
         url,
         query_separator,
         time::OffsetDateTime::now_utc().unix_timestamp()
