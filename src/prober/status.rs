@@ -17,7 +17,7 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub enum Status {
     #[serde(rename = "healthy")]
     Healthy,
@@ -32,17 +32,17 @@ pub enum Status {
 impl Status {
     pub fn as_str(&self) -> &'static str {
         match self {
-            &Status::Healthy => "healthy",
-            &Status::Sick => "sick",
-            &Status::Dead => "dead",
+            Status::Healthy => "healthy",
+            Status::Sick => "sick",
+            Status::Dead => "dead",
         }
     }
 
     pub fn as_icon(&self) -> &'static str {
         match self {
-            &Status::Dead => "\u{274c}",
-            &Status::Sick => "\u{26a0}",
-            &Status::Healthy => "\u{2705}",
+            Status::Dead => "\u{274c}",
+            Status::Sick => "\u{26a0}",
+            Status::Healthy => "\u{2705}",
         }
     }
 }

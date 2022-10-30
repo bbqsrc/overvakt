@@ -45,10 +45,10 @@ struct AppArgs {
     config: PathBuf,
 }
 
-pub static THREAD_NAME_PROBER_POLL: &'static str = "overvakt-prober-poll";
-pub static THREAD_NAME_PROBER_SCRIPT: &'static str = "overvakt-prober-script";
-pub static THREAD_NAME_AGGREGATOR: &'static str = "overvakt-aggregator";
-pub static THREAD_NAME_RESPONDER: &'static str = "overvakt-responder";
+pub static THREAD_NAME_PROBER_POLL: &str = "overvakt-prober-poll";
+pub static THREAD_NAME_PROBER_SCRIPT: &str = "overvakt-prober-script";
+pub static THREAD_NAME_AGGREGATOR: &str = "overvakt-aggregator";
+pub static THREAD_NAME_RESPONDER: &str = "overvakt-responder";
 
 macro_rules! gen_spawn_managed {
     ($name:expr, $method:ident, $thread_name:ident, $managed_fn:ident) => {
@@ -67,7 +67,7 @@ macro_rules! gen_spawn_managed {
             };
 
             // Worker thread crashed?
-            if has_error == true {
+            if has_error {
                 tracing::error!("managed thread crashed ({}), setting it up again", $name);
 
                 // Prevents thread start loop floods
@@ -79,7 +79,7 @@ macro_rules! gen_spawn_managed {
     };
 }
 
-static APP_ARGS: Lazy<AppArgs> = Lazy::new(|| make_app_args());
+static APP_ARGS: Lazy<AppArgs> = Lazy::new(make_app_args);
 static APP_CONF: Lazy<Config> = Lazy::new(|| {
     let c = match Config::new(&APP_ARGS.config) {
         Ok(v) => v,
@@ -151,7 +151,7 @@ async fn main() -> anyhow::Result<()> {
             .into(),
     );
 
-    let _logger = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .compact()
         .with_env_filter(env_filter)
         .init();

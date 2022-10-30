@@ -17,7 +17,6 @@
 
 use once_cell::sync::Lazy;
 use serde::Serialize;
-use time;
 use url::Url;
 
 use super::announcements::Announcement;
@@ -41,7 +40,7 @@ pub static INDEX_CONFIG: Lazy<IndexContextConfig> = Lazy::new(|| IndexContextCon
 });
 
 pub static INDEX_ENVIRONMENT: Lazy<IndexContextEnvironment> =
-    Lazy::new(|| IndexContextEnvironment::default());
+    Lazy::new(IndexContextEnvironment::default);
 
 #[derive(Serialize)]
 pub enum ImageMime {

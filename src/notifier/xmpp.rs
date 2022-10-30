@@ -39,7 +39,7 @@ impl GenericNotifier for XMPPNotifier {
             // Build up the message text
             let mut message = String::new();
 
-            if notification.startup == true {
+            if notification.startup {
                 message.push_str("Startup alert for: ");
             } else if notification.changed == false {
                 message.push_str("Reminder for: ");
@@ -78,7 +78,7 @@ impl GenericNotifier for XMPPNotifier {
                             Some(&xmpp.to),
                         );
 
-                        if message_stanza.set_body(&message).is_ok() == true {
+                        if message_stanza.set_body(&message).is_ok() {
                             connection.send(&message_stanza);
 
                             {
@@ -125,8 +125,8 @@ impl GenericNotifier for XMPPNotifier {
                 // Enter context
                 connection_context.run();
 
-                if *is_sent.read() == true {
-                    return Ok(());
+                if *is_sent.read() {
+                    Ok(())
                 }
             }
 

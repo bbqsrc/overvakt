@@ -32,18 +32,17 @@ static MATRIX_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
         .build()
         .unwrap()
 });
-static MATRIX_FORMATTERS: Lazy<Vec<fn(&Notification<'_>) -> String>> = Lazy::new(|| {
-    vec![
-        format_status,
-        format_replicas,
-        format_status_page,
-        format_time,
-    ]
-});
 
-static MATRIX_MESSAGE_BODY: &'static str = "You received a Övervakt alert.";
-static MATRIX_MESSAGE_TYPE: &'static str = "m.text";
-static MATRIX_MESSAGE_FORMAT: &'static str = "org.matrix.custom.html";
+const MATRIX_FORMATTERS: &[fn(&Notification<'_>) -> String] = &[
+    format_status,
+    format_replicas,
+    format_status_page,
+    format_time,
+];
+
+static MATRIX_MESSAGE_BODY: &str = "You received a Övervakt alert.";
+static MATRIX_MESSAGE_TYPE: &str = "m.text";
+static MATRIX_MESSAGE_FORMAT: &str = "org.matrix.custom.html";
 
 pub struct MatrixNotifier;
 
@@ -105,9 +104,9 @@ impl Notifier for MatrixNotifier {
 }
 
 fn format_status(notification: &Notification<'_>) -> String {
-    let msg = if notification.startup == true {
+    let msg = if notification.startup {
         "Status started up, as"
-    } else if notification.changed == true {
+    } else if notification.changed {
         "Status changed to"
     } else {
         "Status is still"
@@ -125,7 +124,7 @@ fn format_replicas(notification: &Notification<'_>) -> String {
     let replicas = notification
         .replicas
         .iter()
-        .map(|replica| replica.split(":").take(2).collect::<Vec<&str>>().join(":"))
+        .map(|replica| replica.split(':').take(2).collect::<Vec<&str>>().join(":"))
         .fold(HashMap::new(), |mut replicas_count, replica| {
             *replicas_count.entry(replica).or_insert(0) += 1;
             replicas_count

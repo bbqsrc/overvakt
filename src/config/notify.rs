@@ -23,13 +23,13 @@ pub struct Notify {
     pub telegram: Option<Telegram>,
     pub pushover: Option<Pushover>,
     pub gotify: Option<Gotify>,
-    pub xmpp: Option<XMPP>,
+    pub xmpp: Option<Xmpp>,
     pub matrix: Option<Matrix>,
     pub webex: Option<WebEx>,
     pub webhook: Option<WebHook>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReminderBackoffFunction {
     #[serde(rename = "none")]
     None = 0,
@@ -132,7 +132,7 @@ pub struct Gotify {
 }
 
 #[derive(Deserialize)]
-pub struct XMPP {
+pub struct Xmpp {
     pub to: String,
     pub from: String,
     pub xmpp_password: String,

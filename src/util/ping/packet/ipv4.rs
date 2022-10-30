@@ -14,7 +14,7 @@ pub enum Error {
 
 const MINIMUM_PACKET_SIZE: usize = 20;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum IpV4Protocol {
     Icmp,
 }
@@ -56,7 +56,7 @@ impl<'a> IpV4Packet<'a> {
         };
 
         Ok(Self {
-            protocol: protocol,
+            protocol,
             data: &data[header_size..],
         })
     }

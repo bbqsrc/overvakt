@@ -17,17 +17,11 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum Mode {
-    #[serde(rename = "poll")]
     Poll,
-
-    #[serde(rename = "push")]
     Push,
-
-    #[serde(rename = "script")]
     Script,
-
-    #[serde(rename = "local")]
     Local,
 }

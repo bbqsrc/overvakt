@@ -52,7 +52,7 @@ pub(crate) async fn index(tera: Data<&Tera>) -> poem::Result<Html<String>> {
 
 #[handler]
 pub(crate) async fn status_text() -> &'static str {
-    &PROBER_STORE.read().states.status.as_str()
+    PROBER_STORE.read().states.status.as_str()
 }
 
 #[handler]

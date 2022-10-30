@@ -96,10 +96,6 @@ impl<'a> Notification<'a> {
     pub fn expected(&self, reminders_only: bool) -> bool {
         // Notification may not be expected if status has changed, but we only want to receive \
         //   reminders on this specific notifier channel.
-        if reminders_only == false || (reminders_only == true && self.changed == false) {
-            true
-        } else {
-            false
-        }
+        !reminders_only || !self.changed
     }
 }

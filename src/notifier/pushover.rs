@@ -34,7 +34,7 @@ static PUSHOVER_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
         .unwrap()
 });
 
-static PUSHOVER_API_URL: &'static str = "https://api.pushover.net/1/messages.json";
+static PUSHOVER_API_URL: &str = "https://api.pushover.net/1/messages.json";
 
 pub struct PushoverNotifier;
 
@@ -53,15 +53,15 @@ impl Notifier for PushoverNotifier {
         // Build up the message text
         let mut message = String::new();
 
-        if notification.startup == true {
+        if notification.startup {
             message.push_str("<b><i>This is a startup alert.</i></b>\n\n");
-        } else if notification.changed == false {
+        } else if !notification.changed {
             message.push_str("<b><i>This is a reminder.</i></b>\n\n");
         }
 
         message.push_str(&format!(
             "<u>Status:</u> <b><font color=\"{}\">{}</font></b>\n",
-            status_to_color(&notification.status),
+            status_to_color(notification.status),
             notification.status.as_str().to_uppercase()
         ));
         message.push_str(&format!(
@@ -94,7 +94,7 @@ impl Notifier for PushoverNotifier {
             params.insert("url", APP_CONF.branding.page_url.as_str());
 
             // Mark as high-priority? (reminder)
-            if notification.changed == false {
+            if !notification.changed {
                 params.insert("priority", "1");
             }
 
@@ -136,8 +136,8 @@ impl Notifier for PushoverNotifier {
 
 fn status_to_color(status: &Status) -> &'static str {
     match status {
-        &Status::Healthy => "#54A158",
-        &Status::Sick => "#D5A048",
-        &Status::Dead => "#C4291C",
+        Status::Healthy => "#54A158",
+        Status::Sick => "#D5A048",
+        Status::Dead => "#C4291C",
     }
 }

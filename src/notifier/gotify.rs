@@ -53,9 +53,9 @@ impl Notifier for GotifyNotifier {
         // Build up the message text
         let mut message = String::new();
 
-        if notification.startup == true {
+        if notification.startup {
             message.push_str("This is a startup alert.\n\n");
-        } else if notification.changed == false {
+        } else if !notification.changed {
             message.push_str("This is a reminder.\n\n");
         }
 
@@ -82,7 +82,7 @@ impl Notifier for GotifyNotifier {
         params.insert("title", &APP_CONF.branding.page_title);
         params.insert("message", &message);
 
-        if notification.changed == false {
+        if !notification.changed {
             params.insert("priority", "10");
         }
 

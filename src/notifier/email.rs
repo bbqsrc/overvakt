@@ -53,12 +53,12 @@ impl Notifier for EmailNotifier {
         // Build up the message text
         let mut message = String::new();
 
-        if notification.startup == true {
+        if notification.startup {
             message.push_str(&format!(
                 "Status startup alert from: {}\n",
                 APP_CONF.branding.page_title
             ));
-        } else if notification.changed == true {
+        } else if notification.changed {
             message.push_str(&format!(
                 "Status change report from: {}\n",
                 APP_CONF.branding.page_title
@@ -76,8 +76,7 @@ impl Notifier for EmailNotifier {
         message.push_str(&format!("Time: {}\n", &notification.time));
         message.push_str(&format!("URL: {}", APP_CONF.branding.page_url.as_str()));
 
-        message.push_str("\n--\n");
-        message.push_str("\n");
+        message.push_str("\n--\n\n");
         message.push_str("To unsubscribe, please edit your status page configuration.");
 
         tracing::debug!("will send email notification with message: {}", &message);

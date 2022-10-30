@@ -61,12 +61,12 @@ impl Notifier for WebExNotifier {
         // Build up the message text
         let mut message = String::new();
 
-        if notification.startup == true {
+        if notification.startup {
             message.push_str(&format!(
                 "Status startup alert from: {}\n",
                 APP_CONF.branding.page_title
             ));
-        } else if notification.changed == true {
+        } else if notification.changed {
             message.push_str(&format!(
                 "Status change report from: {}\n",
                 APP_CONF.branding.page_title

@@ -31,7 +31,7 @@ use reqwest::redirect::Policy as RedirectPolicy;
 use run_script::{self, ScriptOptions};
 use time;
 
-use super::replica::ReplicaURL;
+use super::replica::ReplicaUrl;
 use super::states::{
     ServiceStates, ServiceStatesNotifier, ServiceStatesProbe, ServiceStatesProbeNode,
     ServiceStatesProbeNodeRabbitMQ, ServiceStatesProbeNodeReplica,
@@ -86,7 +86,7 @@ struct ProbeReplicaTarget {
 
 #[derive(Clone)]
 struct ProbeReplicaPoll {
-    pub replica_url: ReplicaURL,
+    pub replica_url: ReplicaUrl,
     pub http_headers: HeaderMap,
     pub http_method: Option<HttpMethod>,
     pub http_body: Option<String>,
@@ -190,7 +190,7 @@ fn map_script_replicas() -> Vec<ProbeReplica> {
 }
 
 fn proceed_replica_probe_poll_with_retry(
-    replica_url: &ReplicaURL,
+    replica_url: &ReplicaUrl,
     http_headers: &HeaderMap,
     http_method: &Option<HttpMethod>,
     http_body: &Option<String>,
@@ -226,7 +226,7 @@ fn proceed_replica_probe_poll_with_retry(
 }
 
 fn proceed_replica_probe_poll(
-    replica_url: &ReplicaURL,
+    replica_url: &ReplicaUrl,
     http_headers: &HeaderMap,
     http_method: &Option<HttpMethod>,
     http_body: &Option<String>,
@@ -235,9 +235,9 @@ fn proceed_replica_probe_poll(
     let start_time = SystemTime::now();
 
     let (is_up, poll_duration) = match replica_url {
-        &ReplicaURL::ICMP(ref host) => proceed_replica_probe_poll_icmp(host),
-        &ReplicaURL::TCP(ref host, port) => proceed_replica_probe_poll_tcp(host, port),
-        &ReplicaURL::HTTP(ref url) | &ReplicaURL::HTTPS(ref url) => {
+        &ReplicaUrl::Icmp(ref host) => proceed_replica_probe_poll_icmp(host),
+        &ReplicaUrl::Tcp(ref host, port) => proceed_replica_probe_poll_tcp(host, port),
+        &ReplicaUrl::Http(ref url) | &ReplicaUrl::Https(ref url) => {
             proceed_replica_probe_poll_http(url, http_headers, http_method, http_body, body_match)
         }
     };
@@ -249,7 +249,7 @@ fn proceed_replica_probe_poll(
             .unwrap_or(Duration::from_secs(0)),
     };
 
-    if is_up == true {
+    if is_up {
         // Probe reports as sick?
         if duration_latency >= Duration::from_secs(APP_CONF.metrics.poll_delay_sick) {
             return (Status::Sick, duration_latency);
@@ -445,7 +445,7 @@ fn proceed_replica_probe_poll_http(
     body_match: &Option<Regex>,
 ) -> (bool, Option<Duration>) {
     // Acquire query string separator (if the URL already contains a query string, use append mode)
-    let query_separator = if url.contains("?") { "&" } else { "?" };
+    let query_separator = if url.contains('?') { "&" } else { "?" };
 
     // Generate URL with cache buster, to bypass any upstream cache (eg. CDN cache layer)
     let url_bang = format!(
@@ -520,7 +520,7 @@ fn proceed_replica_probe_poll_http(
                     );
 
                         // Doesnt match? Consider as DOWN.
-                        if body_match_regex.is_match(&text) == false {
+                        if !body_match_regex.is_match(&text) {
                             return (false, None);
                         }
                     } else {
@@ -550,7 +550,7 @@ fn proceed_replica_probe_poll_http(
     (false, None)
 }
 
-fn proceed_replica_probe_script(script: &String) -> (Status, Option<Duration>) {
+fn proceed_replica_probe_script(script: &str) -> (Status, Option<Duration>) {
     let start_time = SystemTime::now();
 
     let status = match run_script::run(script, &Vec::new(), &ScriptOptions::new()) {
@@ -577,7 +577,7 @@ fn proceed_replica_probe_script(script: &String) -> (Status, Option<Duration>) {
     (status, SystemTime::now().duration_since(start_time).ok())
 }
 
-fn dispatch_replica<'a>(probe_replica: &ProbeReplica) {
+fn dispatch_replica(probe_replica: &ProbeReplica) {
     let probe_id: &String;
     let node_id: &String;
     let replica_id: &String;
@@ -649,10 +649,7 @@ fn dispatch_replicas_in_threads(replicas: Vec<ProbeReplica>, parallelism: u16) {
 
         for replicas_chunk in replicas.chunks(chunk_size) {
             // Re-map list of chunked replicas so that they can be passed to their thread
-            let replicas_chunk: Vec<ProbeReplica> = replicas_chunk
-                .iter()
-                .map(|replica| replica.clone())
-                .collect();
+            let replicas_chunk: Vec<ProbeReplica> = replicas_chunk.to_vec();
 
             // Append probing chunk into its own synchronous thread
             prober_threads.push(thread::spawn(move || {
@@ -750,7 +747,7 @@ pub fn initialize_store() {
                         replica
                     );
 
-                    let replica_url = ReplicaURL::parse_from(replica).expect("invalid replica url");
+                    let replica_url = ReplicaUrl::parse_from(replica).expect("invalid replica url");
 
                     probe_node.replicas.insert(
                         replica.to_string(),

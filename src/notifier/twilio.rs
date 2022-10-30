@@ -24,7 +24,7 @@ use reqwest::blocking::Client;
 use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
 use crate::{config::notify, APP_CONF};
 
-static TEXT_MESSAGE_TRUNCATED_INDICATOR: &'static str = "[..]";
+static TEXT_MESSAGE_TRUNCATED_INDICATOR: &str = "[..]";
 
 const TEXT_MESSAGE_MAXIMUM_LENGTH: usize = 1000;
 
@@ -50,14 +50,13 @@ impl Notifier for TwilioNotifier {
         // Build up the message text
         let mut message = String::new();
 
-        if notification.startup == true {
+        if notification.startup {
             message.push_str("Startup alert for: ");
-        } else if notification.changed == false {
+        } else if !notification.changed {
             message.push_str("Reminder for: ");
         }
 
-        message.push_str(&format!("{}\n", APP_CONF.branding.page_title));
-        message.push_str("\n");
+        message.push_str(&format!("{}\n\n", APP_CONF.branding.page_title));
         message.push_str(&format!("Status: {:?}\n", notification.status));
         message.push_str(&format!("Nodes: {}\n", &notification.replicas.join(", ")));
         message.push_str(&format!("Time: {}\n", &notification.time));

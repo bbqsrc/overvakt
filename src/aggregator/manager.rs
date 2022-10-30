@@ -154,9 +154,9 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                         // Check RabbitMQ queue full marker?
                         if replica_status == Status::Healthy {
                             if let Some(ref replica_load) = replica.load {
-                                if replica_load.queue.stalled == true {
+                                if replica_load.queue.stalled {
                                     replica_status = Status::Dead;
-                                } else if replica_load.queue.loaded == true {
+                                } else if replica_load.queue.loaded {
                                     replica_status = Status::Sick;
                                 }
                             }
@@ -255,80 +255,77 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
         || (store.states.status == Status::Dead && general_status != Status::Dead);
 
     // Reset the reminder states whenever we are not dead (yet, stored status changed)
-    if has_changed == true && general_status != Status::Dead {
+    if has_changed && general_status != Status::Dead {
         store.states.notifier.reminder_backoff_counter = 1;
         store.states.notifier.reminder_ignore_until = None;
     }
 
     // Check if should re-notify? (in case status did not change; only if dead)
     // Notice: this is used to send periodic reminders of downtime (ie. 'still down' messages)
-    if has_changed == false && should_notify == false && general_status == Status::Dead {
+    if !has_changed && !should_notify && general_status == Status::Dead {
         tracing::debug!("status unchanged, but may need to re-notify; checking");
 
-        match (store.notified, notify.reminder_interval) {
-            (Some(last_notified), Some(reminder_interval)) => {
-                if let Ok(duration_since_notified) = SystemTime::now().duration_since(last_notified)
-                {
-                    // Notice: we use backoff counter all the time because if it is disabled, \
-                    //   then the value is 1 at any time, thus not impacting the interval.
-                    let reminder_backoff_counter = store.states.notifier.reminder_backoff_counter;
-                    let reminder_ignore_until = store.states.notifier.reminder_ignore_until;
-                    let reminder_interval_backoff = Duration::from_secs(
-                        reminder_interval
-                            * (reminder_backoff_counter as u64)
-                                .pow(notify.reminder_backoff_function as u32),
-                    );
+        if let (Some(last_notified), Some(reminder_interval)) =
+            (store.notified, notify.reminder_interval)
+        {
+            if let Ok(duration_since_notified) = SystemTime::now().duration_since(last_notified) {
+                // Notice: we use backoff counter all the time because if it is disabled, \
+                //   then the value is 1 at any time, thus not impacting the interval.
+                let reminder_backoff_counter = store.states.notifier.reminder_backoff_counter;
+                let reminder_ignore_until = store.states.notifier.reminder_ignore_until;
+                let reminder_interval_backoff = Duration::from_secs(
+                    reminder_interval
+                        * (reminder_backoff_counter as u64)
+                            .pow(notify.reminder_backoff_function as u32),
+                );
 
-                    // Check if reminders should be ignored for now?
-                    let should_ignore_reminders =
-                        if let Some(reminder_ignore_until) = reminder_ignore_until {
-                            SystemTime::now() < reminder_ignore_until
-                        } else {
-                            false
-                        };
-
-                    tracing::debug!(
-                        "checking if should re-notify about unchanged status ({}s / {}↑ / {})",
-                        reminder_interval_backoff.as_secs(),
-                        reminder_backoff_counter,
-                        if should_ignore_reminders == false {
-                            "✓"
-                        } else {
-                            "✖"
-                        }
-                    );
-
-                    // Duration since last notified exceeds reminder interval? Should re-notify
-                    if duration_since_notified >= reminder_interval_backoff
-                        && should_ignore_reminders == false
-                    {
-                        tracing::info!("should re-notify about unchanged status");
-
-                        should_notify = true;
-
-                        // Increment the backoff counter? (a backoff function is set, \
-                        //   therefore reminders backoff is enabled)
-                        if notify.reminder_backoff_function != notify::ReminderBackoffFunction::None
-                            && store.states.notifier.reminder_backoff_counter
-                                < notify.reminder_backoff_limit
-                        {
-                            store.states.notifier.reminder_backoff_counter += 1;
-
-                            tracing::debug!(
-                                "incremented re-notify backoff counter to: {} (limit: {})",
-                                store.states.notifier.reminder_backoff_counter,
-                                notify.reminder_backoff_limit
-                            );
-                        }
+                // Check if reminders should be ignored for now?
+                let should_ignore_reminders =
+                    if let Some(reminder_ignore_until) = reminder_ignore_until {
+                        SystemTime::now() < reminder_ignore_until
                     } else {
+                        false
+                    };
+
+                tracing::debug!(
+                    "checking if should re-notify about unchanged status ({}s / {}↑ / {})",
+                    reminder_interval_backoff.as_secs(),
+                    reminder_backoff_counter,
+                    if should_ignore_reminders {
+                        "✖"
+                    } else {
+                        "✓"
+                    }
+                );
+
+                // Duration since last notified exceeds reminder interval? Should re-notify
+                if duration_since_notified >= reminder_interval_backoff && !should_ignore_reminders
+                {
+                    tracing::info!("should re-notify about unchanged status");
+
+                    should_notify = true;
+
+                    // Increment the backoff counter? (a backoff function is set, \
+                    //   therefore reminders backoff is enabled)
+                    if notify.reminder_backoff_function != notify::ReminderBackoffFunction::None
+                        && store.states.notifier.reminder_backoff_counter
+                            < notify.reminder_backoff_limit
+                    {
+                        store.states.notifier.reminder_backoff_counter += 1;
+
                         tracing::debug!(
-                            "should not re-notify about unchanged status (interval: {})",
-                            reminder_interval
+                            "incremented re-notify backoff counter to: {} (limit: {})",
+                            store.states.notifier.reminder_backoff_counter,
+                            notify.reminder_backoff_limit
                         );
                     }
+                } else {
+                    tracing::debug!(
+                        "should not re-notify about unchanged status (interval: {})",
+                        reminder_interval
+                    );
                 }
             }
-            _ => {}
         }
     }
 
@@ -336,7 +333,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
     store.states.status = general_status.to_owned();
     store.states.date = Some(time_now_as_string());
 
-    if should_notify == true {
+    if should_notify {
         store.notified = Some(SystemTime::now());
 
         Some(BumpedStates {
@@ -353,7 +350,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
 fn time_now_as_string() -> String {
     time::OffsetDateTime::now_utc()
         .format(&TIME_NOW_FORMATTER)
-        .unwrap_or("?".to_string())
+        .unwrap_or_else(|_| "?".to_string())
 }
 
 fn dispatch_startup_notification() -> Result<(), Vec<Error>> {

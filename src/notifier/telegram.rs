@@ -33,7 +33,7 @@ static TELEGRAM_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
         .unwrap()
 });
 
-static TELEGRAM_API_BASE_URL: &'static str = "https://api.telegram.org";
+static TELEGRAM_API_BASE_URL: &str = "https://api.telegram.org";
 
 pub struct TelegramNotifier;
 
@@ -70,13 +70,13 @@ impl Notifier for TelegramNotifier {
         notification: &Notification<'_>,
     ) -> Result<(), Self::Error> {
         // Build message
-        let mut message = if notification.startup == true {
+        let mut message = if notification.startup {
             format!(
                 "{} Status started up, as: *{}*.\n",
                 notification.status.as_icon(),
                 notification.status.as_str().to_uppercase()
             )
-        } else if notification.changed == true {
+        } else if notification.changed {
             format!(
                 "{} Status changed to: *{}*.\n",
                 notification.status.as_icon(),
@@ -93,7 +93,7 @@ impl Notifier for TelegramNotifier {
         let mut replicas_count: HashMap<String, u32> = HashMap::new();
 
         for replica in notification.replicas.iter() {
-            let service_and_node = replica.split(":").take(2).collect::<Vec<&str>>().join(":");
+            let service_and_node = replica.split(':').take(2).collect::<Vec<&str>>().join(":");
             *replicas_count.entry(service_and_node).or_insert(0) += 1;
         }
 
@@ -118,12 +118,12 @@ impl Notifier for TelegramNotifier {
         // Generate Telegram chat identifier
         let chat_id = match &telegram.chat_id.parse::<u64>() {
             Ok(user_chat_id) => TelegramChatID::User(*user_chat_id),
-            Err(_) => TelegramChatID::Group(&telegram.chat_id.as_str()),
+            Err(_) => TelegramChatID::Group(telegram.chat_id.as_str()),
         };
 
         // Build payload
         let payload = TelegramPayload {
-            chat_id: chat_id,
+            chat_id,
             text: message,
             parse_mode: "markdown",
             disable_web_page_preview: true,

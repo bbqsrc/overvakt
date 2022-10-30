@@ -22,7 +22,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::mode::Mode;
-use super::replica::ReplicaURL;
+use super::replica::ReplicaUrl;
 use super::status::Status;
 use crate::config::probe::HttpMethod;
 
@@ -84,7 +84,7 @@ pub struct ServiceStatesProbeNode {
 #[derive(Serialize)]
 pub struct ServiceStatesProbeNodeReplica {
     pub status: Status,
-    pub url: Option<ReplicaURL>,
+    pub url: Option<ReplicaUrl>,
     pub script: Option<String>,
     pub metrics: ServiceStatesProbeNodeReplicaMetrics,
     pub load: Option<ServiceStatesProbeNodeReplicaLoad>,

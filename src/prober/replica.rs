@@ -19,29 +19,29 @@ use serde::Serialize;
 use url::{Host, Url};
 
 #[derive(Serialize, Debug, Clone)]
-pub enum ReplicaURL {
-    ICMP(String),
-    TCP(String, u16),
-    HTTP(String),
-    HTTPS(String),
+pub enum ReplicaUrl {
+    Icmp(String),
+    Tcp(String, u16),
+    Http(String),
+    Https(String),
 }
 
-impl ReplicaURL {
-    pub fn parse_from(raw_url: &str) -> Result<ReplicaURL, ()> {
+impl ReplicaUrl {
+    pub fn parse_from(raw_url: &str) -> Result<ReplicaUrl, ()> {
         match Url::parse(raw_url) {
             Ok(url) => match url.scheme() {
                 "icmp" => match (url.host(), url.port(), url.path_segments()) {
-                    (Some(host), None, None) => Ok(ReplicaURL::ICMP(Self::host_string(host))),
+                    (Some(host), None, None) => Ok(ReplicaUrl::Icmp(Self::host_string(host))),
                     _ => Err(()),
                 },
                 "tcp" => match (url.host(), url.port(), url.path_segments()) {
                     (Some(host), Some(port), None) => {
-                        Ok(ReplicaURL::TCP(Self::host_string(host), port))
+                        Ok(ReplicaUrl::Tcp(Self::host_string(host), port))
                     }
                     _ => Err(()),
                 },
-                "http" => Ok(ReplicaURL::HTTP(url.into())),
-                "https" => Ok(ReplicaURL::HTTPS(url.into())),
+                "http" => Ok(ReplicaUrl::Http(url.into())),
+                "https" => Ok(ReplicaUrl::Https(url.into())),
                 _ => Err(()),
             },
             _ => Err(()),
