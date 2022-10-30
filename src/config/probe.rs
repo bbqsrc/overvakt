@@ -24,6 +24,8 @@ pub struct ServiceNode {
     pub replicas: Option<Vec<String>>,
     pub scripts: Option<Vec<String>>,
     #[serde(default)]
+    pub http_no_cache_buster: bool,
+    #[serde(default)]
     #[serde(with = "http_serde::header_map")]
     pub http_headers: http::HeaderMap,
     pub http_method: Option<HttpMethod>,

@@ -71,6 +71,8 @@ pub struct ServiceStatesProbeNode {
     pub mode: Mode,
     pub replicas: IndexMap<String, ServiceStatesProbeNodeReplica>,
     #[serde(default)]
+    pub http_cache_buster: bool,
+    #[serde(default)]
     #[serde(with = "http_serde::header_map")]
     pub http_headers: http::HeaderMap,
     pub http_method: Option<HttpMethod>,

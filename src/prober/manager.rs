@@ -87,6 +87,7 @@ struct ProbeReplicaTarget {
 #[derive(Clone)]
 struct ProbeReplicaPoll {
     pub replica_url: ReplicaUrl,
+    pub http_cache_buster: bool,
     pub http_headers: HeaderMap,
     pub http_method: Option<HttpMethod>,
     pub http_body: Option<String>,
@@ -144,6 +145,7 @@ fn map_poll_replicas() -> Vec<ProbeReplica> {
                                 http_headers: node.http_headers.clone(),
                                 http_method: node.http_method,
                                 http_body: node.http_body.clone(),
+                                http_cache_buster: node.http_cache_buster,
                                 body_match: node.http_body_healthy_match.clone(),
                             },
                         ));
@@ -191,6 +193,7 @@ fn map_script_replicas() -> Vec<ProbeReplica> {
 
 fn proceed_replica_probe_poll_with_retry(
     replica_url: &ReplicaUrl,
+    http_cache_buster: bool,
     http_headers: &HeaderMap,
     http_method: Option<HttpMethod>,
     http_body: &Option<String>,
@@ -209,6 +212,7 @@ fn proceed_replica_probe_poll_with_retry(
 
         let probe_results = proceed_replica_probe_poll(
             replica_url,
+            http_cache_buster,
             http_headers,
             http_method,
             http_body,
@@ -227,6 +231,7 @@ fn proceed_replica_probe_poll_with_retry(
 
 fn proceed_replica_probe_poll(
     replica_url: &ReplicaUrl,
+    http_cache_buster: bool,
     http_headers: &HeaderMap,
     http_method: Option<HttpMethod>,
     http_body: &Option<String>,
@@ -238,7 +243,14 @@ fn proceed_replica_probe_poll(
         &ReplicaUrl::Icmp(ref host) => proceed_replica_probe_poll_icmp(host),
         &ReplicaUrl::Tcp(ref host, port) => proceed_replica_probe_poll_tcp(host, port),
         &ReplicaUrl::Http(ref url) | &ReplicaUrl::Https(ref url) => {
-            proceed_replica_probe_poll_http(url, http_headers, http_method, http_body, body_match)
+            proceed_replica_probe_poll_http(
+                url,
+                http_cache_buster,
+                http_headers,
+                http_method,
+                http_body,
+                body_match,
+            )
         }
     };
 
@@ -439,6 +451,7 @@ fn proceed_replica_probe_poll_tcp(host: &str, port: u16) -> (bool, Option<Durati
 
 fn proceed_replica_probe_poll_http(
     url: &str,
+    http_cache_buster: bool,
     http_headers: &HeaderMap,
     http_method: Option<HttpMethod>,
     http_body: &Option<String>,
@@ -448,12 +461,16 @@ fn proceed_replica_probe_poll_http(
     let query_separator = if url.contains('?') { "&" } else { "?" };
 
     // Generate URL with cache buster, to bypass any upstream cache (eg. CDN cache layer)
-    let url_bang = format!(
-        "{}{}_overvakt={}",
-        url,
-        query_separator,
-        time::OffsetDateTime::now_utc().unix_timestamp()
-    );
+    let url_bang = if http_cache_buster {
+        format!(
+            "{}{}_overvakt={}",
+            url,
+            query_separator,
+            time::OffsetDateTime::now_utc().unix_timestamp()
+        )
+    } else {
+        url.to_string()
+    };
 
     // Acquire effective HTTP method to use for probe query
     let effective_http_method = http_method.as_ref().unwrap_or(if body_match.is_some() {
@@ -591,6 +608,7 @@ fn dispatch_replica(probe_replica: &ProbeReplica) {
 
             proceed_replica_probe_poll_with_retry(
                 &probe_replica_poll.replica_url,
+                probe_replica_poll.http_cache_buster,
                 &probe_replica_poll.http_headers,
                 probe_replica_poll.http_method,
                 &probe_replica_poll.http_body,
@@ -721,6 +739,7 @@ pub fn initialize_store() {
                 mode: node.mode.clone(),
                 replicas: IndexMap::new(),
                 http_headers: node.http_headers.clone(),
+                http_cache_buster: !node.http_no_cache_buster,
                 http_method: node.http_method,
                 http_body: node.http_body.clone(),
                 http_body_healthy_match: node.http_body_healthy_match.clone(),
