@@ -30,11 +30,11 @@ use std::time::Duration;
 use std::{process, thread};
 
 use clap::{value_parser, Arg, Command};
-use log::LevelFilter;
 use once_cell::sync::Lazy;
+use tracing::metadata::LevelFilter;
+use tracing_subscriber::EnvFilter;
 
 use crate::aggregator::manager::run as run_aggregator;
-use crate::config::logger::ConfigLogger;
 use crate::config::Config;
 use crate::prober::manager::{
     initialize_store as initialize_store_prober, run_poll as run_poll_prober,
@@ -53,7 +53,7 @@ pub static THREAD_NAME_RESPONDER: &'static str = "overvakt-responder";
 macro_rules! gen_spawn_managed {
     ($name:expr, $method:ident, $thread_name:ident, $managed_fn:ident) => {
         fn $method() {
-            log::debug!("spawn managed thread: {}", $name);
+            tracing::debug!("spawn managed thread: {}", $name);
 
             let worker = thread::Builder::new()
                 .name($thread_name.to_string())
@@ -68,7 +68,7 @@ macro_rules! gen_spawn_managed {
 
             // Worker thread crashed?
             if has_error == true {
-                log::error!("managed thread crashed ({}), setting it up again", $name);
+                tracing::error!("managed thread crashed ({}), setting it up again", $name);
 
                 // Prevents thread start loop floods
                 thread::sleep(Duration::from_secs(1));
@@ -145,11 +145,18 @@ fn make_app_args() -> AppArgs {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize shared logger
-    let _logger = ConfigLogger::init(
-        LevelFilter::from_str(&APP_CONF.server.log_level).expect("invalid log level"),
+    let env_filter = EnvFilter::default().add_directive(
+        LevelFilter::from_str(&APP_CONF.server.log_level)
+            .expect("invalid log level")
+            .into(),
     );
 
-    log::info!("starting up");
+    let _logger = tracing_subscriber::fmt()
+        .compact()
+        .with_env_filter(env_filter)
+        .init();
+
+    tracing::info!("starting up");
 
     // Initialize prober store
     initialize_store_prober();
@@ -164,6 +171,6 @@ async fn main() -> anyhow::Result<()> {
     // Spawn Web responder (foreground thread)
     responder::manager::run().await?;
 
-    log::info!("shutting down server");
+    tracing::info!("shutting down server");
     Ok(())
 }

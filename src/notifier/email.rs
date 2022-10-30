@@ -80,7 +80,7 @@ impl Notifier for EmailNotifier {
         message.push_str("\n");
         message.push_str("To unsubscribe, please edit your status page configuration.");
 
-        log::debug!("will send email notification with message: {}", &message);
+        tracing::debug!("will send email notification with message: {}", &message);
 
         // Build up the email
         let email_message = MessageBuilder::new()

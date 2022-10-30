@@ -48,7 +48,7 @@ impl<'a> Notification<'a> {
         notification: &Notification<'_>,
     ) -> Result<(), Error> {
         if N::can_notify(notify, notification) {
-            log::info!(
+            tracing::info!(
                 "dispatch {} notification for status: {:?} and replicas: {:?}",
                 N::name(),
                 notification.status,
@@ -57,7 +57,7 @@ impl<'a> Notification<'a> {
 
             let mut errors = vec![];
             for try_index in 1..(DISPATCH_TRY_ATTEMPT_TIMES + 1) {
-                log::debug!(
+                tracing::debug!(
                     "dispatch {} notification attempt: #{}",
                     N::name(),
                     try_index
@@ -71,7 +71,7 @@ impl<'a> Notification<'a> {
                 // Attempt notification dispatch
                 match N::attempt(notify, notification) {
                     Ok(_) => {
-                        log::debug!("dispatched notification to provider: {}", N::name());
+                        tracing::debug!("dispatched notification to provider: {}", N::name());
                         return Ok(());
                     }
                     Err(e) => {
@@ -80,7 +80,7 @@ impl<'a> Notification<'a> {
                 }
             }
 
-            log::error!("failed dispatching notification to provider: {}", N::name());
+            tracing::error!("failed dispatching notification to provider: {}", N::name());
 
             return Err(Error {
                 name: N::name(),
@@ -88,7 +88,7 @@ impl<'a> Notification<'a> {
             });
         }
 
-        log::debug!("did not dispatch notification to provider: {}", N::name());
+        tracing::debug!("did not dispatch notification to provider: {}", N::name());
 
         Ok(())
     }

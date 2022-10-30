@@ -16,7 +16,6 @@ path = "src/main.rs"
 doc = false
 
 [dependencies]
-log = { version = "0.4.17", features = ["std"] }
 clap = { version = "4.0.18", features = ["std", "cargo"] }
 time = { version = "0.3.15", features = ["formatting"] }
 serde = { version = "1.0.147", features = ["derive"] }
@@ -43,6 +42,8 @@ rand = "0.8.5"
 socket2 = "0.4.7"
 config = "0.13.2"
 serde_regex = "1.1.0"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter", "serde", "parking_lot"] }
 
 [features]
 default = ["notifier-email", "notifier-twilio", "notifier-slack", "notifier-zulip", "notifier-telegram", "notifier-pushover", "notifier-gotify", "notifier-matrix", "notifier-webex", "notifier-webhook"]

@@ -66,7 +66,7 @@ impl Notifier for GotifyNotifier {
         message.push_str(&format!("Nodes:\n{}\n", &notification.replicas.join("\n")));
         message.push_str(&format!("Time: {}", &notification.time));
 
-        log::debug!("will send Gotify notification with message: {}", &message);
+        tracing::debug!("will send Gotify notification with message: {}", &message);
 
         // Generate URL
         // See: https://gotify.net/docs/pushmsg

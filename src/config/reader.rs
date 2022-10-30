@@ -28,7 +28,7 @@ pub struct ConfigReader;
 
 impl ConfigReader {
     pub fn make() -> Config {
-        log::debug!("reading config file: {}", &APP_ARGS.config);
+        tracing::debug!("reading config file: {}", &APP_ARGS.config);
 
         let mut file = File::open(&APP_ARGS.config).expect("cannot find config file");
         let mut conf = String::new();
@@ -36,7 +36,7 @@ impl ConfigReader {
         file.read_to_string(&mut conf)
             .expect("cannot read config file");
 
-        log::debug!("read config file: {}", &APP_ARGS.config);
+        tracing::debug!("read config file: {}", &APP_ARGS.config);
 
         // Parse configuration
         let config = toml::from_str(&conf).expect("syntax error in config file");

@@ -52,7 +52,7 @@ impl GenericNotifier for XMPPNotifier {
             message.push_str(&format!("Time: {}\n", &notification.time));
             message.push_str(&format!("URL: {}", APP_CONF.branding.page_url.as_str()));
 
-            log::debug!("will send XMPP notification with message: {}", &message);
+            tracing::debug!("will send XMPP notification with message: {}", &message);
 
             // Configure connection handler
             let fn_handle = |context: &Context<'_, '_>,
@@ -60,7 +60,7 @@ impl GenericNotifier for XMPPNotifier {
                              event: ConnectionEvent<'_, '_>| {
                 match event {
                     ConnectionEvent::Connect => {
-                        log::debug!("connected to XMPP account: {}", &xmpp.from);
+                        tracing::debug!("connected to XMPP account: {}", &xmpp.from);
 
                         // Acquire UNIX time (used to stamp the message w/ an unique identifier)
                         let now_timestamp = if let Ok(unix_time) =
@@ -93,13 +93,13 @@ impl GenericNotifier for XMPPNotifier {
                     }
                     ConnectionEvent::Disconnect(err) => {
                         if let Some(err) = err {
-                            log::error!(
+                            tracing::error!(
                                 "connection failure to XMPP account: {} ({:?})",
                                 &xmpp.from,
                                 err
                             );
                         } else {
-                            log::debug!("disconnected from XMPP account: {}", &xmpp.from);
+                            tracing::debug!("disconnected from XMPP account: {}", &xmpp.from);
                         }
 
                         context.stop();

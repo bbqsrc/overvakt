@@ -64,7 +64,7 @@ impl Notifier for MatrixNotifier {
         // Build up the message text
         let message = format_message(notification);
 
-        log::debug!("will send Matrix notification with message: {}", &message);
+        tracing::debug!("will send Matrix notification with message: {}", &message);
 
         // Generate URL
         // See: https://matrix.org/docs/guides/client-server-api#sending-messages

@@ -98,12 +98,12 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
     let mut general_status = Status::Healthy;
 
     for (probe_id, probe) in store.states.probes.iter_mut() {
-        log::debug!("aggregate probe: {}", probe_id);
+        tracing::debug!("aggregate probe: {}", probe_id);
 
         let mut probe_status = Status::Healthy;
 
         for (node_id, node) in probe.nodes.iter_mut() {
-            log::debug!("aggregate node: {}:{}", probe_id, node_id);
+            tracing::debug!("aggregate node: {}:{}", probe_id, node_id);
 
             let mut node_status = Status::Healthy;
 
@@ -122,7 +122,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                                     >= (replica_report.interval
                                         + Duration::from_secs(APP_CONF.metrics.push_delay_dead))
                                 {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "replica: {}:{}:{} is dead because it didnt report in a while",
                                         probe_id, node_id, replica_id
                                     );
@@ -139,7 +139,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                                     || (replica_load.ram
                                         > APP_CONF.metrics.push_system_ram_sick_above)
                                 {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "replica: {}:{}:{} is sick because it is overloaded",
                                         probe_id,
                                         node_id,
@@ -176,7 +176,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                                     >= (replica_report.interval
                                         + Duration::from_secs(APP_CONF.metrics.local_delay_dead))
                                 {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "replica: {}:{}:{} is dead because it didnt report in a while",
                                         probe_id, node_id, replica_id
                                     );
@@ -197,7 +197,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                     node_status = worst_status;
                 }
 
-                log::debug!(
+                tracing::debug!(
                     "aggregated status for replica: {}:{}:{} => {:?}",
                     probe_id,
                     node_id,
@@ -218,7 +218,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                 probe_status = worst_status;
             }
 
-            log::debug!(
+            tracing::debug!(
                 "aggregated status for node: {}:{} => {:?}",
                 probe_id,
                 node_id,
@@ -233,7 +233,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
             general_status = worst_status;
         }
 
-        log::debug!(
+        tracing::debug!(
             "aggregated status for probe: {} => {:?}",
             probe_id,
             probe_status
@@ -263,7 +263,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
     // Check if should re-notify? (in case status did not change; only if dead)
     // Notice: this is used to send periodic reminders of downtime (ie. 'still down' messages)
     if has_changed == false && should_notify == false && general_status == Status::Dead {
-        log::debug!("status unchanged, but may need to re-notify; checking");
+        tracing::debug!("status unchanged, but may need to re-notify; checking");
 
         match (store.notified, notify.reminder_interval) {
             (Some(last_notified), Some(reminder_interval)) => {
@@ -287,7 +287,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                             false
                         };
 
-                    log::debug!(
+                    tracing::debug!(
                         "checking if should re-notify about unchanged status ({}s / {}↑ / {})",
                         reminder_interval_backoff.as_secs(),
                         reminder_backoff_counter,
@@ -302,7 +302,7 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                     if duration_since_notified >= reminder_interval_backoff
                         && should_ignore_reminders == false
                     {
-                        log::info!("should re-notify about unchanged status");
+                        tracing::info!("should re-notify about unchanged status");
 
                         should_notify = true;
 
@@ -314,14 +314,14 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
                         {
                             store.states.notifier.reminder_backoff_counter += 1;
 
-                            log::debug!(
+                            tracing::debug!(
                                 "incremented re-notify backoff counter to: {} (limit: {})",
                                 store.states.notifier.reminder_backoff_counter,
                                 notify.reminder_backoff_limit
                             );
                         }
                     } else {
-                        log::debug!(
+                        tracing::debug!(
                             "should not re-notify about unchanged status (interval: {})",
                             reminder_interval
                         );
@@ -358,7 +358,7 @@ fn time_now_as_string() -> String {
 
 fn dispatch_startup_notification() -> Result<(), Vec<Error>> {
     if APP_CONF.notify.startup_notification {
-        log::debug!("sending aggregate startup notification...");
+        tracing::debug!("sending aggregate startup notification...");
 
         notify(&BumpedStates {
             status: Status::Healthy,
@@ -499,7 +499,7 @@ pub fn run() -> Result<(), Vec<Error>> {
 
     // Start aggregate loop
     loop {
-        log::debug!("running an aggregate operation...");
+        tracing::debug!("running an aggregate operation...");
 
         // Should notify after bump?
         let bumped_states = scan_and_bump_states();
@@ -508,7 +508,7 @@ pub fn run() -> Result<(), Vec<Error>> {
             notify(bumped_states_inner)?;
         }
 
-        log::info!(
+        tracing::info!(
             "ran aggregate operation (notified: {})",
             bumped_states.is_some()
         );

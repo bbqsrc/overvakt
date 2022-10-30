@@ -17,7 +17,6 @@
 
 mod defaults;
 
-pub mod logger;
 pub mod notify;
 pub mod plugins;
 pub mod probe;

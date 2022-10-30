@@ -65,7 +65,7 @@ impl Notifier for TwilioNotifier {
         // Trim down message to a maximum length? (most SMS receivers and networks support \
         //   up to 1600 characters by re-building message segments)
         if message.len() > TEXT_MESSAGE_MAXIMUM_LENGTH {
-            log::debug!(
+            tracing::debug!(
                 "message for Twilio notification is too long, trimming to length: {}",
                 TEXT_MESSAGE_MAXIMUM_LENGTH
             );
@@ -75,7 +75,7 @@ impl Notifier for TwilioNotifier {
             message.push_str(TEXT_MESSAGE_TRUNCATED_INDICATOR);
         }
 
-        log::debug!("will send Twilio notification with message: {}", &message);
+        tracing::debug!("will send Twilio notification with message: {}", &message);
 
         let mut failures = vec![];
 

@@ -70,7 +70,7 @@ impl Notifier for PushoverNotifier {
         ));
         message.push_str(&format!("<u>Time:</u> {}", &notification.time));
 
-        log::debug!("will send Pushover notification with message: {}", &message);
+        tracing::debug!("will send Pushover notification with message: {}", &message);
 
         let mut failures = vec![];
 

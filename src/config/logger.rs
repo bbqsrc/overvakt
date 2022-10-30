@@ -16,11 +16,11 @@
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
 use log;
-use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+use tracing::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 
 pub struct ConfigLogger;
 
-impl log::Log for ConfigLogger {
+impl tracing::Log for ConfigLogger {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
         metadata.level() <= Level::Debug
     }
@@ -36,7 +36,7 @@ impl log::Log for ConfigLogger {
 
 impl ConfigLogger {
     pub fn init(level: LevelFilter) -> Result<(), SetLoggerError> {
-        log::set_max_level(level);
-        log::set_boxed_logger(Box::new(ConfigLogger))
+        tracing::set_max_level(level);
+        tracing::set_boxed_logger(Box::new(ConfigLogger))
     }
 }

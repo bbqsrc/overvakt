@@ -199,7 +199,7 @@ fn proceed_replica_probe_poll_with_retry(
     let (mut status, mut latency, mut retry_count) = (Status::Dead, None, 0);
 
     while retry_count <= APP_CONF.metrics.poll_retry && status == Status::Dead {
-        log::debug!(
+        tracing::debug!(
             "will probe replica: {:?} with retry count: {}",
             replica_url,
             retry_count
@@ -286,7 +286,7 @@ fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
             let address_values: Vec<SocketAddr> = address.collect();
 
             if !address_values.is_empty() {
-                log::debug!(
+                tracing::debug!(
                     "prober poll will fire for icmp host: {} ({} targets)",
                     host,
                     address_values.len()
@@ -305,7 +305,7 @@ fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
                 for address_value in &address_values {
                     let address_ip = address_value.ip();
 
-                    log::debug!(
+                    tracing::debug!(
                         "prober poll will send icmp ping to target: {} from host: {}",
                         address_ip,
                         host
@@ -325,7 +325,7 @@ fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
                         socket2::Type::from(socket_type),
                     ) {
                         Ok(_) => {
-                            log::debug!(
+                            tracing::debug!(
                                 "got prober poll response for icmp target: {} from host: {}",
                                 address_ip,
                                 host
@@ -351,7 +351,7 @@ fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
                             };
                         }
                         Err(err) => {
-                            log::debug!(
+                            tracing::debug!(
                                 "prober poll error for icmp target: {} from host: {} (error: {})",
                                 address_ip,
                                 host,
@@ -364,7 +364,7 @@ fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
                     }
                 }
             } else {
-                log::debug!(
+                tracing::debug!(
                     "prober poll did not resolve any address for icmp replica: {}",
                     host
                 );
@@ -374,7 +374,7 @@ fn proceed_replica_probe_poll_icmp(host: &str) -> (bool, Option<Duration>) {
             }
         }
         Err(err) => {
-            log::error!(
+            tracing::error!(
                 "prober poll address for icmp replica is invalid: {} (error: {})",
                 host,
                 err
@@ -395,19 +395,19 @@ fn proceed_replica_probe_poll_tcp(host: &str, port: u16) -> (bool, Option<Durati
     match address_results {
         Ok(mut address) => {
             if let Some(address_value) = address.next() {
-                log::debug!("prober poll will fire for tcp target: {}", address_value);
+                tracing::debug!("prober poll will fire for tcp target: {}", address_value);
 
                 return match TcpStream::connect_timeout(
                     &address_value,
                     Duration::from_secs(APP_CONF.metrics.poll_delay_dead),
                 ) {
                     Ok(_) => {
-                        log::debug!("prober poll success for tcp target: {}", address_value);
+                        tracing::debug!("prober poll success for tcp target: {}", address_value);
 
                         (true, None)
                     }
                     Err(err) => {
-                        log::debug!(
+                        tracing::debug!(
                             "prober poll error for tcp target: {} (error: {})",
                             address_value,
                             err
@@ -417,7 +417,7 @@ fn proceed_replica_probe_poll_tcp(host: &str, port: u16) -> (bool, Option<Durati
                     }
                 };
             } else {
-                log::debug!(
+                tracing::debug!(
                     "prober poll did not resolve any address for tcp replica: {}:{}",
                     host,
                     port
@@ -425,7 +425,7 @@ fn proceed_replica_probe_poll_tcp(host: &str, port: u16) -> (bool, Option<Durati
             }
         }
         Err(err) => {
-            log::error!(
+            tracing::error!(
                 "prober poll address for tcp replica is invalid: {}:{} (error: {})",
                 host,
                 port,
@@ -466,7 +466,7 @@ fn proceed_replica_probe_poll_http(
     let effective_http_body = http_body.as_ref().map(String::as_str).unwrap_or_default();
 
     // Probe target, with provided HTTP method and body (if any)
-    log::debug!(
+    tracing::debug!(
         "prober poll will fire for http target: {} with method: {:?} and body: '{}'",
         &url_bang,
         &effective_http_method,
@@ -501,7 +501,7 @@ fn proceed_replica_probe_poll_http(
         Ok(response_inner) => {
             let status_code = response_inner.status().as_u16();
 
-            log::debug!(
+            tracing::debug!(
                 "prober poll result received for http target: {} with status: {}",
                 &url_bang,
                 status_code
@@ -514,7 +514,7 @@ fn proceed_replica_probe_poll_http(
                 // Check response body for match? (if configured)
                 if let &Some(ref body_match_regex) = body_match {
                     if let Ok(text) = response_inner.text() {
-                        log::debug!(
+                        tracing::debug!(
                         "checking prober poll response text for http target: {} for any match: {}",
                         &url_bang, &text
                     );
@@ -524,7 +524,7 @@ fn proceed_replica_probe_poll_http(
                             return (false, None);
                         }
                     } else {
-                        log::debug!(
+                        tracing::debug!(
                             "could not unpack response text for http target: {}",
                             &url_bang
                         );
@@ -538,7 +538,7 @@ fn proceed_replica_probe_poll_http(
             }
         }
         Err(err) => {
-            log::debug!(
+            tracing::debug!(
                 "prober poll result was not received for http target: {} (error: {})",
                 &url_bang,
                 err
@@ -555,7 +555,7 @@ fn proceed_replica_probe_script(script: &String) -> (Status, Option<Duration>) {
 
     let status = match run_script::run(script, &Vec::new(), &ScriptOptions::new()) {
         Ok((code, _, _)) => {
-            log::debug!(
+            tracing::debug!(
                 "prober script execution succeeded with return code: {}",
                 code
             );
@@ -568,7 +568,7 @@ fn proceed_replica_probe_script(script: &String) -> (Status, Option<Duration>) {
             }
         }
         Err(err) => {
-            log::error!("prober script execution failed with error: {}", err);
+            tracing::error!("prober script execution failed with error: {}", err);
 
             Status::Dead
         }
@@ -606,7 +606,7 @@ fn dispatch_replica<'a>(probe_replica: &ProbeReplica) {
         }
     };
 
-    log::debug!(
+    tracing::debug!(
         "replica probe result: {}:{}:{} => {:?}",
         probe_id,
         node_id,
@@ -664,7 +664,7 @@ fn dispatch_replicas_in_threads(replicas: Vec<ProbeReplica>, parallelism: u16) {
 
         let prober_threads_len = prober_threads.len();
 
-        log::debug!(
+        tracing::debug!(
             "replicas will get probed in {}/{} threads, on {} total replicas and chunk size of {}",
             prober_threads_len,
             parallelism,
@@ -682,7 +682,7 @@ fn dispatch_replicas_in_threads(replicas: Vec<ProbeReplica>, parallelism: u16) {
             .duration_since(start_time)
             .unwrap_or(Duration::from_secs(0));
 
-        log::info!(
+        tracing::info!(
             "replicas have been probed with {}/{} threads in {:?}",
             prober_threads_len,
             parallelism,
@@ -713,10 +713,10 @@ pub fn initialize_store() {
             nodes: IndexMap::new(),
         };
 
-        log::debug!("prober store: got service {}", service.id);
+        tracing::debug!("prober store: got service {}", service.id);
 
         for node in &service.node {
-            log::debug!("prober store: got node {}:{}", service.id, node.id);
+            tracing::debug!("prober store: got node {}:{}", service.id, node.id);
 
             let mut probe_node = ServiceStatesProbeNode {
                 status: Status::Healthy,
@@ -743,7 +743,7 @@ pub fn initialize_store() {
                 }
 
                 for replica in replicas {
-                    log::debug!(
+                    tracing::debug!(
                         "prober store: got replica {}:{}:{}",
                         service.id,
                         node.id,
@@ -773,7 +773,7 @@ pub fn initialize_store() {
                 }
 
                 for (index, script) in scripts.iter().enumerate() {
-                    log::debug!(
+                    tracing::debug!(
                         "prober store: got script {}:{}:#{}",
                         service.id,
                         node.id,
@@ -800,16 +800,16 @@ pub fn initialize_store() {
         store.states.probes.insert(service.id.to_owned(), probe);
     }
 
-    log::info!("initialized prober store");
+    tracing::info!("initialized prober store");
 }
 
 pub fn run_poll() {
     loop {
-        log::debug!("running a poll probe operation...");
+        tracing::debug!("running a poll probe operation...");
 
         dispatch_polls();
 
-        log::info!("ran poll probe operation");
+        tracing::info!("ran poll probe operation");
 
         // Hold for next aggregate run
         thread::sleep(Duration::from_secs(APP_CONF.metrics.poll_interval));
@@ -818,11 +818,11 @@ pub fn run_poll() {
 
 pub fn run_script() {
     loop {
-        log::debug!("running a script probe operation...");
+        tracing::debug!("running a script probe operation...");
 
         dispatch_scripts();
 
-        log::info!("ran script probe operation");
+        tracing::info!("ran script probe operation");
 
         // Hold for next aggregate run
         thread::sleep(Duration::from_secs(APP_CONF.metrics.script_interval));
