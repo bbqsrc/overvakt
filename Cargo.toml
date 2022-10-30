@@ -1,6 +1,6 @@
 [package]
 name = "overvakt-server"
-version = "0.2.0"
+version = "0.2.1"
 description = "Service uptime monitor with alert plugins"
 readme = "README.md"
 license = "MPL-2.0"
