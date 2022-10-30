@@ -24,6 +24,7 @@ use std::time::{Duration, SystemTime};
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
+use regex::Regex;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, USER_AGENT};
 use reqwest::redirect::Policy as RedirectPolicy;
@@ -38,7 +39,6 @@ use super::states::{
 };
 use super::status::Status;
 use crate::config::config::ConfigProbeServiceNodeHTTPMethod;
-use crate::config::regex::Regex;
 use crate::prober::manager::STORE as PROBER_STORE;
 use crate::prober::mode::Mode;
 use crate::util::ping::ping;

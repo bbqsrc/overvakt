@@ -18,12 +18,13 @@
 use std::time::{Duration, SystemTime};
 
 use indexmap::IndexMap;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::mode::Mode;
 use super::replica::ReplicaURL;
 use super::status::Status;
-use crate::config::{config::ConfigProbeServiceNodeHTTPMethod, regex::Regex};
+use crate::config::config::ConfigProbeServiceNodeHTTPMethod;
 
 #[derive(Serialize)]
 pub struct ServiceStates {
@@ -74,6 +75,7 @@ pub struct ServiceStatesProbeNode {
     pub http_headers: http::HeaderMap,
     pub http_method: Option<ConfigProbeServiceNodeHTTPMethod>,
     pub http_body: Option<String>,
+    #[serde(with = "serde_regex")]
     pub http_body_healthy_match: Option<Regex>,
     pub rabbitmq: Option<ServiceStatesProbeNodeRabbitMQ>,
 }

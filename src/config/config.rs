@@ -19,10 +19,10 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use regex::Regex;
 use url::Url;
 
 use super::defaults;
-use super::regex::Regex;
 use crate::prober::mode::Mode;
 use crate::prober::states::SocketType;
 
@@ -323,6 +323,7 @@ pub struct ConfigProbeServiceNode {
     pub http_headers: http::HeaderMap,
     pub http_method: Option<ConfigProbeServiceNodeHTTPMethod>,
     pub http_body: Option<String>,
+    #[serde(with = "serde_regex")]
     pub http_body_healthy_match: Option<Regex>,
     pub rabbitmq_queue: Option<String>,
     pub rabbitmq_queue_nack_healthy_below: Option<u32>,

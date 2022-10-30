@@ -41,6 +41,7 @@ parking_lot = "0.12.1"
 once_cell = { version = "1.15.0", features = ["parking_lot"] }
 rand = "0.8.5"
 socket2 = "0.4.7"
+serde_regex = "1.1.0"
 
 [features]
 default = ["notifier-email", "notifier-twilio", "notifier-slack", "notifier-zulip", "notifier-telegram", "notifier-pushover", "notifier-gotify", "notifier-matrix", "notifier-webex", "notifier-webhook"]
