@@ -59,7 +59,7 @@ pub fn ping(
     socket.set_read_timeout(timeout)?;
 
     let mut buffer: [u8; 2048] = [0; 2048];
-    socket.read_exact(&mut buffer)?;
+    let _ = socket.read(&mut buffer)?;
 
     let _reply = if dest.is_ipv4() {
         let ipv4_packet = match IpV4Packet::decode(&buffer) {
