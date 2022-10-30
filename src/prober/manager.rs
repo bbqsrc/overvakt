@@ -702,18 +702,18 @@ pub fn initialize_store() {
     // Copy monitored hosts in store (refactor the data structure)
     let mut store = STORE.write();
 
-    for service in &APP_CONF.probe.service {
+    for (service_id, service) in APP_CONF.probe.service.iter() {
         let mut probe = ServiceStatesProbe {
-            id: service.id.clone(),
+            id: service_id.clone(),
             label: service.label.clone(),
             status: Status::Healthy,
             nodes: IndexMap::new(),
         };
 
-        tracing::debug!("prober store: got service {}", service.id);
+        tracing::debug!("prober store: got service {}", service_id);
 
-        for node in &service.node {
-            tracing::debug!("prober store: got node {}:{}", service.id, node.id);
+        for (node_id, node) in &service.node {
+            tracing::debug!("prober store: got node {}:{}", service_id, node_id);
 
             let mut probe_node = ServiceStatesProbeNode {
                 status: Status::Healthy,
@@ -742,8 +742,8 @@ pub fn initialize_store() {
                 for replica in replicas {
                     tracing::debug!(
                         "prober store: got replica {}:{}:{}",
-                        service.id,
-                        node.id,
+                        service_id,
+                        node_id,
                         replica
                     );
 
@@ -772,8 +772,8 @@ pub fn initialize_store() {
                 for (index, script) in scripts.iter().enumerate() {
                     tracing::debug!(
                         "prober store: got script {}:{}:#{}",
-                        service.id,
-                        node.id,
+                        service_id,
+                        node_id,
                         index
                     );
 
@@ -791,10 +791,10 @@ pub fn initialize_store() {
                 }
             }
 
-            probe.nodes.insert(node.id.clone(), probe_node);
+            probe.nodes.insert(node_id.clone(), probe_node);
         }
 
-        store.states.probes.insert(service.id.clone(), probe);
+        store.states.probes.insert(service_id.clone(), probe);
     }
 
     tracing::info!("initialized prober store");

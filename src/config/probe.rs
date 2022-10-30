@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -5,19 +6,19 @@ use crate::prober::mode::Mode;
 
 #[derive(Deserialize)]
 pub struct Probe {
-    pub service: Vec<Service>,
+    #[serde(default)]
+    pub service: IndexMap<String, Service>,
 }
 
 #[derive(Deserialize)]
 pub struct Service {
-    pub id: String,
     pub label: String,
-    pub node: Vec<ServiceNode>,
+    #[serde(default)]
+    pub node: IndexMap<String, ServiceNode>,
 }
 
 #[derive(Deserialize)]
 pub struct ServiceNode {
-    pub id: String,
     pub label: String,
     pub mode: Mode,
     pub replicas: Option<Vec<String>>,

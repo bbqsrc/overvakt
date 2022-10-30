@@ -84,8 +84,8 @@ static APP_CONF: Lazy<Config> = Lazy::new(|| {
     let c = match Config::new(&APP_ARGS.config) {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("Error loading config:");
-            eprintln!("{}", e);
+            eprintln!("[!] Error loading config:");
+            eprintln!("{:?}", e);
             process::exit(1);
         }
     };

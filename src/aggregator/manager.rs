@@ -16,7 +16,6 @@
 // License: Mozilla Public License v2.0 (MPL v2.0)
 
 use once_cell::sync::Lazy;
-use std::iter::FromIterator;
 use std::thread;
 use std::time::{Duration, SystemTime};
 use time;
