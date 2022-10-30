@@ -35,6 +35,7 @@ pub struct Config {
     pub server: Server,
     pub assets: Assets,
     pub branding: Branding,
+    #[serde(default)]
     pub metrics: Metrics,
     #[serde(default)]
     pub plugins: Plugins,
@@ -130,4 +131,24 @@ pub struct Metrics {
 
     #[serde(default = "defaults::metrics_local_delay_dead")]
     pub local_delay_dead: u64,
+}
+
+impl Default for Metrics {
+    fn default() -> Self {
+        Self {
+            poll_interval: defaults::metrics_poll_interval(),
+            poll_retry: defaults::metrics_poll_retry(),
+            poll_http_status_healthy_above: defaults::metrics_poll_http_status_healthy_above(),
+            poll_http_status_healthy_below: defaults::metrics_poll_http_status_healthy_below(),
+            poll_delay_dead: defaults::metrics_poll_delay_dead(),
+            poll_delay_sick: defaults::metrics_poll_delay_sick(),
+            poll_parallelism: defaults::poll_parallelism(),
+            push_delay_dead: defaults::metrics_push_delay_dead(),
+            push_system_cpu_sick_above: defaults::metrics_push_system_cpu_sick_above(),
+            push_system_ram_sick_above: defaults::metrics_push_system_ram_sick_above(),
+            script_interval: defaults::metrics_script_interval(),
+            script_parallelism: defaults::script_parallelism(),
+            local_delay_dead: defaults::metrics_local_delay_dead(),
+        }
+    }
 }
