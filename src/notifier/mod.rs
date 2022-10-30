@@ -49,3 +49,10 @@ pub mod webex;
 
 #[cfg(feature = "notifier-webhook")]
 pub mod webhook;
+
+#[derive(Debug, thiserror::Error)]
+#[error("There were error(s) with the `{name}` notifier")]
+pub struct Error {
+    name: &'static str,
+    errors: Vec<Box<dyn std::error::Error + Send + Sync>>,
+}

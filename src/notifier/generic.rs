@@ -18,6 +18,7 @@
 use std::thread;
 use std::time::Duration;
 
+use crate::notifier::Error;
 use crate::prober::status::Status;
 
 const DISPATCH_TRY_WAIT_SECONDS: u64 = 2;
@@ -32,9 +33,9 @@ pub struct Notification<'a> {
     pub startup: bool,
 }
 
-pub trait GenericNotifier {
+pub trait Notifier {
     type Config;
-    type Error;
+    type Error: std::error::Error + Send + Sync + 'static;
 
     fn attempt(notify: &Self::Config, notification: &Notification<'_>) -> Result<(), Self::Error>;
     fn can_notify(notify: &Self::Config, notification: &Notification<'_>) -> bool;
@@ -42,11 +43,11 @@ pub trait GenericNotifier {
 }
 
 impl<'a> Notification<'a> {
-    pub fn dispatch<N: GenericNotifier>(
+    pub fn dispatch<N: Notifier>(
         notify: &N::Config,
         notification: &Notification<'_>,
-    ) -> Result<(), Vec<N::Error>> {
-        if N::can_notify(notify, notification) == true {
+    ) -> Result<(), Error> {
+        if N::can_notify(notify, notification) {
             log::info!(
                 "dispatch {} notification for status: {:?} and replicas: {:?}",
                 N::name(),
@@ -80,7 +81,11 @@ impl<'a> Notification<'a> {
             }
 
             log::error!("failed dispatching notification to provider: {}", N::name());
-            return Err(errors);
+
+            return Err(Error {
+                name: N::name(),
+                errors: errors.into_iter().map(Into::into).collect(),
+            });
         }
 
         log::debug!("did not dispatch notification to provider: {}", N::name());

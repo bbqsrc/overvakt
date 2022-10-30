@@ -21,8 +21,8 @@ use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 use serde::Serialize;
 
-use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
-use crate::config::config::ConfigNotify;
+use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
+use crate::config::notify;
 use crate::prober::status::Status;
 use crate::APP_CONF;
 
@@ -35,6 +35,15 @@ static WEBHOOK_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
 });
 
 pub struct WebHookNotifier;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("An HTTP error was returned.")]
+    Http(#[from] reqwest::Error),
+
+    #[error("Status was not success.")]
+    NonSuccess(#[source] reqwest::Error),
+}
 
 #[derive(Serialize)]
 struct WebHookPayload<'a> {
@@ -65,53 +74,49 @@ struct WebHookPayloadPage<'a> {
     url: &'a str,
 }
 
-impl GenericNotifier for WebHookNotifier {
-    type Config = ConfigNotify;
-    type Error = bool;
+impl Notifier for WebHookNotifier {
+    type Config = notify::WebHook;
+    type Error = Error;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
-        if let Some(ref webhook) = notify.webhook {
-            // Acquire hook type
-            let hook_type = if notification.startup == true {
-                WebHookPayloadType::Startup
-            } else if notification.changed == true {
-                WebHookPayloadType::Changed
-            } else {
-                WebHookPayloadType::Reminder
-            };
+    fn attempt(webhook: &Self::Config, notification: &Notification<'_>) -> Result<(), Self::Error> {
+        // Acquire hook type
+        let hook_type = if notification.startup == true {
+            WebHookPayloadType::Startup
+        } else if notification.changed == true {
+            WebHookPayloadType::Changed
+        } else {
+            WebHookPayloadType::Reminder
+        };
 
-            // Build paylaod
-            let payload = WebHookPayload {
-                _type: hook_type,
-                status: notification.status,
-                time: notification.time.as_str(),
-                replicas: &notification.replicas,
-                page: WebHookPayloadPage {
-                    title: APP_CONF.branding.page_title.as_str(),
-                    url: APP_CONF.branding.page_url.as_str(),
-                },
-            };
+        // Build paylaod
+        let payload = WebHookPayload {
+            _type: hook_type,
+            status: notification.status,
+            time: notification.time.as_str(),
+            replicas: &notification.replicas,
+            page: WebHookPayloadPage {
+                title: APP_CONF.branding.page_title.as_str(),
+                url: APP_CONF.branding.page_url.as_str(),
+            },
+        };
 
-            // Submit payload to Web Hooks
-            let response = WEBHOOK_HTTP_CLIENT
-                .post(webhook.hook_url.as_str())
-                .json(&payload)
-                .send();
+        // Submit payload to Web Hooks
+        let response = WEBHOOK_HTTP_CLIENT
+            .post(webhook.hook_url.as_str())
+            .json(&payload)
+            .send();
 
-            if let Ok(response_inner) = response {
-                if response_inner.status().is_success() == true {
-                    return Ok(());
-                }
-            }
-
-            return Err(true);
+        match response {
+            Ok(response) => match response.error_for_status() {
+                Ok(_) => Ok(()),
+                Err(err) => Err(Error::NonSuccess(err)),
+            },
+            Err(err) => Err(Error::Http(err)),
         }
-
-        Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, _: &Notification<'_>) -> bool {
-        notify.webhook.is_some()
+    fn can_notify(_: &Self::Config, _: &Notification<'_>) -> bool {
+        true
     }
 
     fn name() -> &'static str {

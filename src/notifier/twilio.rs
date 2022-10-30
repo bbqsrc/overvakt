@@ -21,9 +21,8 @@ use std::time::Duration;
 use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 
-use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
-use crate::config::config::ConfigNotify;
-use crate::APP_CONF;
+use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
+use crate::{config::notify, APP_CONF};
 
 static TEXT_MESSAGE_TRUNCATED_INDICATOR: &'static str = "[..]";
 
@@ -39,89 +38,87 @@ static TWILIO_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
 
 pub struct TwilioNotifier;
 
-impl GenericNotifier for TwilioNotifier {
-    type Config = ConfigNotify;
-    type Error = bool;
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to deliver message to phone numbers: {0:?}")]
+pub struct Error(Vec<(String, reqwest::Error)>);
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
-        if let Some(ref twilio) = notify.twilio {
-            // Build up the message text
-            let mut message = String::new();
+impl Notifier for TwilioNotifier {
+    type Config = notify::Twilio;
+    type Error = Error;
 
-            if notification.startup == true {
-                message.push_str("Startup alert for: ");
-            } else if notification.changed == false {
-                message.push_str("Reminder for: ");
-            }
+    fn attempt(twilio: &Self::Config, notification: &Notification<'_>) -> Result<(), Self::Error> {
+        // Build up the message text
+        let mut message = String::new();
 
-            message.push_str(&format!("{}\n", APP_CONF.branding.page_title));
-            message.push_str("\n");
-            message.push_str(&format!("Status: {:?}\n", notification.status));
-            message.push_str(&format!("Nodes: {}\n", &notification.replicas.join(", ")));
-            message.push_str(&format!("Time: {}\n", &notification.time));
+        if notification.startup == true {
+            message.push_str("Startup alert for: ");
+        } else if notification.changed == false {
+            message.push_str("Reminder for: ");
+        }
 
-            // Trim down message to a maximum length? (most SMS receivers and networks support \
-            //   up to 1600 characters by re-building message segments)
-            if message.len() > TEXT_MESSAGE_MAXIMUM_LENGTH {
-                log::debug!(
-                    "message for Twilio notification is too long, trimming to length: {}",
-                    TEXT_MESSAGE_MAXIMUM_LENGTH
-                );
+        message.push_str(&format!("{}\n", APP_CONF.branding.page_title));
+        message.push_str("\n");
+        message.push_str(&format!("Status: {:?}\n", notification.status));
+        message.push_str(&format!("Nodes: {}\n", &notification.replicas.join(", ")));
+        message.push_str(&format!("Time: {}\n", &notification.time));
 
-                message
-                    .truncate(TEXT_MESSAGE_MAXIMUM_LENGTH - TEXT_MESSAGE_TRUNCATED_INDICATOR.len());
+        // Trim down message to a maximum length? (most SMS receivers and networks support \
+        //   up to 1600 characters by re-building message segments)
+        if message.len() > TEXT_MESSAGE_MAXIMUM_LENGTH {
+            log::debug!(
+                "message for Twilio notification is too long, trimming to length: {}",
+                TEXT_MESSAGE_MAXIMUM_LENGTH
+            );
 
-                message.push_str(TEXT_MESSAGE_TRUNCATED_INDICATOR);
-            }
+            message.truncate(TEXT_MESSAGE_MAXIMUM_LENGTH - TEXT_MESSAGE_TRUNCATED_INDICATOR.len());
 
-            log::debug!("will send Twilio notification with message: {}", &message);
+            message.push_str(TEXT_MESSAGE_TRUNCATED_INDICATOR);
+        }
 
-            let mut has_sub_delivery_failure = false;
+        log::debug!("will send Twilio notification with message: {}", &message);
 
-            for to_number in &twilio.to {
-                // Build form parameters
-                let mut params = HashMap::new();
+        let mut failures = vec![];
 
-                params.insert("MessagingServiceSid", &twilio.service_sid);
-                params.insert("To", to_number);
-                params.insert("Body", &message);
+        for to_number in &twilio.to {
+            // Build form parameters
+            let mut params = HashMap::new();
 
-                // Submit message to Twilio
-                let response = TWILIO_HTTP_CLIENT
-                    .post(&generate_api_url(&twilio.account_sid))
-                    .basic_auth(
-                        twilio.account_sid.as_str(),
-                        Some(twilio.auth_token.as_str()),
-                    )
-                    .form(&params)
-                    .send();
+            params.insert("MessagingServiceSid", &twilio.service_sid);
+            params.insert("To", to_number);
+            params.insert("Body", &message);
 
-                // Check for any failure
-                if let Ok(response_inner) = response {
-                    if response_inner.status().is_success() != true {
-                        has_sub_delivery_failure = true;
+            // Submit message to Twilio
+            let response = TWILIO_HTTP_CLIENT
+                .post(&generate_api_url(&twilio.account_sid))
+                .basic_auth(
+                    twilio.account_sid.as_str(),
+                    Some(twilio.auth_token.as_str()),
+                )
+                .form(&params)
+                .send();
+
+            match response {
+                Ok(response) => match response.error_for_status() {
+                    Ok(_) => {}
+                    Err(err) => {
+                        failures.push((to_number.to_string(), err));
                     }
-                } else {
-                    has_sub_delivery_failure = true;
+                },
+                Err(err) => {
+                    failures.push((to_number.to_string(), err));
                 }
             }
-
-            if has_sub_delivery_failure == true {
-                return Err(true);
-            }
-
-            return Ok(());
         }
 
-        Err(false)
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(Error(failures))
+        }
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
-        if let Some(ref twilio_config) = notify.twilio {
-            notification.expected(twilio_config.reminders_only)
-        } else {
-            false
-        }
+    fn can_notify(config: &Self::Config, notification: &Notification<'_>) -> bool {
+        notification.expected(config.reminders_only)
     }
 
     fn name() -> &'static str {

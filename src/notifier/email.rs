@@ -22,8 +22,8 @@ use lettre::transport::smtp;
 use lettre::transport::smtp::{authentication::Credentials, SmtpTransport};
 use lettre::Transport;
 
-use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
-use crate::config::config::ConfigNotifyEmail;
+use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
+use crate::config::notify;
 use crate::APP_CONF;
 
 #[derive(Debug, thiserror::Error)]
@@ -40,12 +40,12 @@ pub enum Error {
 
 pub struct EmailNotifier;
 
-impl GenericNotifier for EmailNotifier {
-    type Config = ConfigNotifyEmail;
+impl Notifier for EmailNotifier {
+    type Config = notify::Email;
     type Error = Error;
 
     fn attempt(
-        email_config: &ConfigNotifyEmail,
+        email_config: &notify::Email,
         notification: &Notification<'_>,
     ) -> Result<(), Self::Error> {
         let nodes_label = notification.replicas.join(", ");
@@ -110,7 +110,7 @@ impl GenericNotifier for EmailNotifier {
         Ok(())
     }
 
-    fn can_notify(email_config: &ConfigNotifyEmail, notification: &Notification<'_>) -> bool {
+    fn can_notify(email_config: &notify::Email, notification: &Notification<'_>) -> bool {
         notification.expected(email_config.reminders_only)
     }
 

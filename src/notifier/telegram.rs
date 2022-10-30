@@ -22,9 +22,8 @@ use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 use serde::Serialize;
 
-use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
-use crate::config::config::ConfigNotify;
-use crate::APP_CONF;
+use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
+use crate::{config::notify, APP_CONF};
 
 static TELEGRAM_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
     Client::builder()
@@ -53,103 +52,107 @@ enum TelegramChatID<'a> {
     User(u64),
 }
 
-impl GenericNotifier for TelegramNotifier {
-    type Config = ConfigNotify;
-    type Error = bool;
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("An HTTP error was returned.")]
+    Http(#[from] reqwest::Error),
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
-        if let Some(ref telegram) = notify.telegram {
-            // Build message
-            let mut message = if notification.startup == true {
-                format!(
-                    "{} Status started up, as: *{}*.\n",
-                    notification.status.as_icon(),
-                    notification.status.as_str().to_uppercase()
-                )
-            } else if notification.changed == true {
-                format!(
-                    "{} Status changed to: *{}*.\n",
-                    notification.status.as_icon(),
-                    notification.status.as_str().to_uppercase()
-                )
-            } else {
-                format!(
-                    "{} Status is still: *{}*.\n",
-                    notification.status.as_icon(),
-                    notification.status.as_str().to_uppercase()
-                )
-            };
+    #[error("Status was not success.")]
+    NonSuccess(#[source] reqwest::Error),
+}
 
-            let mut replicas_count: HashMap<String, u32> = HashMap::new();
+impl Notifier for TelegramNotifier {
+    type Config = notify::Telegram;
+    type Error = Error;
 
-            for replica in notification.replicas.iter() {
-                let service_and_node = replica.split(":").take(2).collect::<Vec<&str>>().join(":");
-                *replicas_count.entry(service_and_node).or_insert(0) += 1;
-            }
+    fn attempt(
+        telegram: &Self::Config,
+        notification: &Notification<'_>,
+    ) -> Result<(), Self::Error> {
+        // Build message
+        let mut message = if notification.startup == true {
+            format!(
+                "{} Status started up, as: *{}*.\n",
+                notification.status.as_icon(),
+                notification.status.as_str().to_uppercase()
+            )
+        } else if notification.changed == true {
+            format!(
+                "{} Status changed to: *{}*.\n",
+                notification.status.as_icon(),
+                notification.status.as_str().to_uppercase()
+            )
+        } else {
+            format!(
+                "{} Status is still: *{}*.\n",
+                notification.status.as_icon(),
+                notification.status.as_str().to_uppercase()
+            )
+        };
 
-            let nodes_count_list_text = replicas_count
-                .iter()
-                .map(|(service_and_node, count)| {
-                    format!(
-                        "- `{}`: {} {}",
-                        service_and_node,
-                        count,
-                        notification.status.as_str()
-                    )
-                })
-                .collect::<Vec<String>>()
-                .join("\n");
+        let mut replicas_count: HashMap<String, u32> = HashMap::new();
 
-            message.push_str(&nodes_count_list_text);
-            message.push_str(&format!("\nLink: {}", APP_CONF.branding.page_url.as_str()));
-
-            log::debug!("will send Telegram notification with message: {}", &message);
-
-            // Generate Telegram chat identifier
-            let chat_id = match &telegram.chat_id.parse::<u64>() {
-                Ok(user_chat_id) => TelegramChatID::User(*user_chat_id),
-                Err(_) => TelegramChatID::Group(&telegram.chat_id.as_str()),
-            };
-
-            // Build payload
-            let payload = TelegramPayload {
-                chat_id: chat_id,
-                text: message,
-                parse_mode: "markdown",
-                disable_web_page_preview: true,
-            };
-
-            // Generate target API URL
-            let url = format!(
-                "{}/bot{}/sendMessage",
-                TELEGRAM_API_BASE_URL, telegram.bot_token
-            );
-
-            // Submit message to Telegram
-            let response = TELEGRAM_HTTP_CLIENT
-                .post(url.as_str())
-                .json(&payload)
-                .send();
-
-            // Check for any failure
-            if let Ok(response_inner) = response {
-                if response_inner.status().is_success() == true {
-                    return Ok(());
-                }
-            }
-
-            return Err(true);
+        for replica in notification.replicas.iter() {
+            let service_and_node = replica.split(":").take(2).collect::<Vec<&str>>().join(":");
+            *replicas_count.entry(service_and_node).or_insert(0) += 1;
         }
 
-        Err(false)
+        let nodes_count_list_text = replicas_count
+            .iter()
+            .map(|(service_and_node, count)| {
+                format!(
+                    "- `{}`: {} {}",
+                    service_and_node,
+                    count,
+                    notification.status.as_str()
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        message.push_str(&nodes_count_list_text);
+        message.push_str(&format!("\nLink: {}", APP_CONF.branding.page_url.as_str()));
+
+        log::debug!("will send Telegram notification with message: {}", &message);
+
+        // Generate Telegram chat identifier
+        let chat_id = match &telegram.chat_id.parse::<u64>() {
+            Ok(user_chat_id) => TelegramChatID::User(*user_chat_id),
+            Err(_) => TelegramChatID::Group(&telegram.chat_id.as_str()),
+        };
+
+        // Build payload
+        let payload = TelegramPayload {
+            chat_id: chat_id,
+            text: message,
+            parse_mode: "markdown",
+            disable_web_page_preview: true,
+        };
+
+        // Generate target API URL
+        let url = format!(
+            "{}/bot{}/sendMessage",
+            TELEGRAM_API_BASE_URL, telegram.bot_token
+        );
+
+        // Submit message to Telegram
+        let response = TELEGRAM_HTTP_CLIENT
+            .post(url.as_str())
+            .json(&payload)
+            .send();
+
+        // Check for any failure
+        match response {
+            Ok(response) => match response.error_for_status() {
+                Ok(_) => Ok(()),
+                Err(err) => Err(Error::NonSuccess(err)),
+            },
+            Err(err) => Err(Error::Http(err)),
+        }
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
-        if let Some(ref telegram_config) = notify.telegram {
-            notification.expected(telegram_config.reminders_only)
-        } else {
-            false
-        }
+    fn can_notify(config: &Self::Config, notification: &Notification<'_>) -> bool {
+        notification.expected(config.reminders_only)
     }
 
     fn name() -> &'static str {

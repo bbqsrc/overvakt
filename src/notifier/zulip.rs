@@ -22,8 +22,8 @@ use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 use serde::Serialize;
 
-use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
-use crate::config::config::ConfigNotify;
+use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
+use crate::config::notify;
 use crate::prober::status::Status;
 use crate::APP_CONF;
 
@@ -46,80 +46,76 @@ struct ZulipPayload<'a> {
     content: &'a str,
 }
 
-impl GenericNotifier for ZulipNotifier {
-    type Config = ConfigNotify;
-    type Error = bool;
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("An HTTP error was returned.")]
+    Http(#[from] reqwest::Error),
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
-        if let Some(ref zulip) = notify.zulip {
-            let status_label = format!("{:?}", notification.status);
+    #[error("Status was not success.")]
+    NonSuccess(#[source] reqwest::Error),
+}
 
-            let status_text = match notification.status {
-                Status::Dead => " *dead* :boom:",
-                Status::Healthy => " *healthy* :check_mark:",
-                Status::Sick => " *sick* :sick:",
-            };
+impl Notifier for ZulipNotifier {
+    type Config = notify::Zulip;
+    type Error = Error;
 
-            // Build message
-            let mut message_text = if notification.startup == true {
-                format!("Status started up, as: {}.", status_text)
-            } else if notification.changed {
-                format!("Status changed to: {}.", status_text)
-            } else {
-                format!("Status is still: {}.", status_text)
-            };
+    fn attempt(zulip: &Self::Config, notification: &Notification<'_>) -> Result<(), Self::Error> {
+        let status_label = format!("{:?}", notification.status);
 
-            if notification.replicas.len() > 0 {
-                let nodes_label = notification.replicas.join(", ");
-                let nodes_label_titled = format!("\n **Nodes**: *{}*.", nodes_label);
+        let status_text = match notification.status {
+            Status::Dead => " *dead* :boom:",
+            Status::Healthy => " *healthy* :check_mark:",
+            Status::Sick => " *sick* :sick:",
+        };
 
-                message_text.push_str(&nodes_label_titled);
-            }
+        // Build message
+        let mut message_text = if notification.startup == true {
+            format!("Status started up, as: {}.", status_text)
+        } else if notification.changed {
+            format!("Status changed to: {}.", status_text)
+        } else {
+            format!("Status is still: {}.", status_text)
+        };
 
-            message_text.push_str(&format!("\n **Status**: {}", &status_label));
-            message_text.push_str(&format!("\n **Time**: {}", &notification.time));
-            message_text.push_str(&format!(
-                "\n **Page**: {}",
-                &APP_CONF.branding.page_url.as_str()
-            ));
+        if notification.replicas.len() > 0 {
+            let nodes_label = notification.replicas.join(", ");
+            let nodes_label_titled = format!("\n **Nodes**: *{}*.", nodes_label);
 
-            // Submit payload to Zulip
-            let payload = ZulipPayload {
-                type_: "stream",
-                to: &zulip.channel,
-                topic: "Övervakt status",
-                content: &message_text,
-            };
-
-            let response = ZULIP_HTTP_CLIENT
-                .post(zulip.api_url.join("messages").unwrap().as_str())
-                .basic_auth(zulip.bot_email.clone(), Some(zulip.bot_api_key.clone()))
-                .form(&payload)
-                .send();
-
-            if let Ok(response_inner) = response {
-                if response_inner.status().is_success() == true {
-                    return Ok(());
-                } else {
-                    log::warn!(
-                        "could not submit data to zulip: {:?}",
-                        response_inner.text()
-                    );
-                }
-            }
-
-            return Err(true);
+            message_text.push_str(&nodes_label_titled);
         }
 
-        Err(false)
+        message_text.push_str(&format!("\n **Status**: {}", &status_label));
+        message_text.push_str(&format!("\n **Time**: {}", &notification.time));
+        message_text.push_str(&format!(
+            "\n **Page**: {}",
+            &APP_CONF.branding.page_url.as_str()
+        ));
+
+        // Submit payload to Zulip
+        let payload = ZulipPayload {
+            type_: "stream",
+            to: &zulip.channel,
+            topic: "Övervakt status",
+            content: &message_text,
+        };
+
+        let response = ZULIP_HTTP_CLIENT
+            .post(zulip.api_url.join("messages").unwrap().as_str())
+            .basic_auth(zulip.bot_email.clone(), Some(zulip.bot_api_key.clone()))
+            .form(&payload)
+            .send();
+
+        match response {
+            Ok(response) => match response.error_for_status() {
+                Ok(_) => Ok(()),
+                Err(err) => Err(Error::NonSuccess(err)),
+            },
+            Err(err) => Err(Error::Http(err)),
+        }
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
-        if let Some(ref zulip_config) = notify.zulip {
-            notification.expected(zulip_config.reminders_only)
-        } else {
-            false
-        }
+    fn can_notify(config: &Self::Config, notification: &Notification<'_>) -> bool {
+        notification.expected(config.reminders_only)
     }
 
     fn name() -> &'static str {

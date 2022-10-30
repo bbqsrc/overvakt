@@ -38,7 +38,7 @@ use super::states::{
     ServiceStatesProbeNodeReplicaMetrics,
 };
 use super::status::Status;
-use crate::config::config::ConfigProbeServiceNodeHTTPMethod;
+use crate::config::probe::HttpMethod;
 use crate::prober::manager::STORE as PROBER_STORE;
 use crate::prober::mode::Mode;
 use crate::util::ping::ping;
@@ -88,7 +88,7 @@ struct ProbeReplicaTarget {
 struct ProbeReplicaPoll {
     pub replica_url: ReplicaURL,
     pub http_headers: HeaderMap,
-    pub http_method: Option<ConfigProbeServiceNodeHTTPMethod>,
+    pub http_method: Option<HttpMethod>,
     pub http_body: Option<String>,
     pub body_match: Option<Regex>,
 }
@@ -192,7 +192,7 @@ fn map_script_replicas() -> Vec<ProbeReplica> {
 fn proceed_replica_probe_poll_with_retry(
     replica_url: &ReplicaURL,
     http_headers: &HeaderMap,
-    http_method: &Option<ConfigProbeServiceNodeHTTPMethod>,
+    http_method: &Option<HttpMethod>,
     http_body: &Option<String>,
     body_match: &Option<Regex>,
 ) -> (Status, Option<Duration>) {
@@ -228,7 +228,7 @@ fn proceed_replica_probe_poll_with_retry(
 fn proceed_replica_probe_poll(
     replica_url: &ReplicaURL,
     http_headers: &HeaderMap,
-    http_method: &Option<ConfigProbeServiceNodeHTTPMethod>,
+    http_method: &Option<HttpMethod>,
     http_body: &Option<String>,
     body_match: &Option<Regex>,
 ) -> (Status, Duration) {
@@ -440,7 +440,7 @@ fn proceed_replica_probe_poll_tcp(host: &str, port: u16) -> (bool, Option<Durati
 fn proceed_replica_probe_poll_http(
     url: &str,
     http_headers: &HeaderMap,
-    http_method: &Option<ConfigProbeServiceNodeHTTPMethod>,
+    http_method: &Option<HttpMethod>,
     http_body: &Option<String>,
     body_match: &Option<Regex>,
 ) -> (bool, Option<Duration>) {
@@ -457,9 +457,9 @@ fn proceed_replica_probe_poll_http(
 
     // Acquire effective HTTP method to use for probe query
     let effective_http_method = http_method.as_ref().unwrap_or(if body_match.is_some() {
-        &ConfigProbeServiceNodeHTTPMethod::Get
+        &HttpMethod::Get
     } else {
-        &ConfigProbeServiceNodeHTTPMethod::Head
+        &HttpMethod::Head
     });
 
     // Acquire effective HTTP body to use for probe query (for POST methods only)
@@ -474,23 +474,19 @@ fn proceed_replica_probe_poll_http(
     );
 
     let response = match effective_http_method {
-        ConfigProbeServiceNodeHTTPMethod::Head => PROBE_HTTP_CLIENT.head(&url_bang),
-        ConfigProbeServiceNodeHTTPMethod::Get => PROBE_HTTP_CLIENT.get(&url_bang),
-        ConfigProbeServiceNodeHTTPMethod::Post => {
-            PROBE_HTTP_CLIENT
-                .post(&url_bang)
-                .body(reqwest::blocking::Body::from(
-                    effective_http_body.to_string(),
-                ))
-        }
-        ConfigProbeServiceNodeHTTPMethod::Put => {
-            PROBE_HTTP_CLIENT
-                .put(&url_bang)
-                .body(reqwest::blocking::Body::from(
-                    effective_http_body.to_string(),
-                ))
-        }
-        ConfigProbeServiceNodeHTTPMethod::Patch => {
+        HttpMethod::Head => PROBE_HTTP_CLIENT.head(&url_bang),
+        HttpMethod::Get => PROBE_HTTP_CLIENT.get(&url_bang),
+        HttpMethod::Post => PROBE_HTTP_CLIENT
+            .post(&url_bang)
+            .body(reqwest::blocking::Body::from(
+                effective_http_body.to_string(),
+            )),
+        HttpMethod::Put => PROBE_HTTP_CLIENT
+            .put(&url_bang)
+            .body(reqwest::blocking::Body::from(
+                effective_http_body.to_string(),
+            )),
+        HttpMethod::Patch => {
             PROBE_HTTP_CLIENT
                 .patch(&url_bang)
                 .body(reqwest::blocking::Body::from(

@@ -26,11 +26,13 @@ use crate::APP_CONF;
 
 pub struct XMPPNotifier;
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {}
 impl GenericNotifier for XMPPNotifier {
     type Config = ConfigNotify;
-    type Error = bool;
+    type Error = Error;
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
+    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), Self::Error> {
         if let Some(ref xmpp) = notify.xmpp {
             let is_sent = RwLock::new(false);
 

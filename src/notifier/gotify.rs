@@ -22,8 +22,8 @@ use std::time::Duration;
 use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 
-use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
-use crate::config::config::ConfigNotify;
+use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
+use crate::config::notify;
 use crate::APP_CONF;
 
 static GOTIFY_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
@@ -36,71 +36,70 @@ static GOTIFY_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
 
 pub struct GotifyNotifier;
 
-impl GenericNotifier for GotifyNotifier {
-    type Config = ConfigNotify;
-    type Error = bool;
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("An HTTP error was returned.")]
+    Http(#[from] reqwest::Error),
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
-        if let Some(ref gotify) = notify.gotify {
-            // Build up the message text
-            let mut message = String::new();
+    #[error("Status was not success.")]
+    NonSuccess(#[source] reqwest::Error),
+}
 
-            if notification.startup == true {
-                message.push_str("This is a startup alert.\n\n");
-            } else if notification.changed == false {
-                message.push_str("This is a reminder.\n\n");
-            }
+impl Notifier for GotifyNotifier {
+    type Config = notify::Gotify;
+    type Error = Error;
 
-            message.push_str(&format!(
-                "Status: {}\n",
-                notification.status.as_str().to_uppercase()
-            ));
-            message.push_str(&format!("Nodes:\n{}\n", &notification.replicas.join("\n")));
-            message.push_str(&format!("Time: {}", &notification.time));
+    fn attempt(gotify: &Self::Config, notification: &Notification<'_>) -> Result<(), Self::Error> {
+        // Build up the message text
+        let mut message = String::new();
 
-            log::debug!("will send Gotify notification with message: {}", &message);
-
-            // Generate URL
-            // See: https://gotify.net/docs/pushmsg
-            let url = format!(
-                "{}message?token={}",
-                gotify.app_url.as_str(),
-                gotify.app_token
-            );
-
-            // Build message parameters
-            let mut params: HashMap<&str, &str> = HashMap::new();
-
-            params.insert("title", &APP_CONF.branding.page_title);
-            params.insert("message", &message);
-
-            if notification.changed == false {
-                params.insert("priority", "10");
-            }
-
-            // Submit message to Gotify
-            let response = GOTIFY_HTTP_CLIENT.post(&url).form(&params).send();
-
-            if let Ok(response_inner) = response {
-                if response_inner.status().is_success() != true {
-                    return Err(true);
-                }
-            } else {
-                return Err(true);
-            }
-
-            return Ok(());
+        if notification.startup == true {
+            message.push_str("This is a startup alert.\n\n");
+        } else if notification.changed == false {
+            message.push_str("This is a reminder.\n\n");
         }
 
-        Err(false)
+        message.push_str(&format!(
+            "Status: {}\n",
+            notification.status.as_str().to_uppercase()
+        ));
+        message.push_str(&format!("Nodes:\n{}\n", &notification.replicas.join("\n")));
+        message.push_str(&format!("Time: {}", &notification.time));
+
+        log::debug!("will send Gotify notification with message: {}", &message);
+
+        // Generate URL
+        // See: https://gotify.net/docs/pushmsg
+        let url = format!(
+            "{}message?token={}",
+            gotify.app_url.as_str(),
+            gotify.app_token
+        );
+
+        // Build message parameters
+        let mut params: HashMap<&str, &str> = HashMap::new();
+
+        params.insert("title", &APP_CONF.branding.page_title);
+        params.insert("message", &message);
+
+        if notification.changed == false {
+            params.insert("priority", "10");
+        }
+
+        // Submit message to Gotify
+        let response = GOTIFY_HTTP_CLIENT.post(&url).form(&params).send();
+
+        match response {
+            Ok(response) => match response.error_for_status() {
+                Ok(_) => Ok(()),
+                Err(err) => Err(Error::NonSuccess(err)),
+            },
+            Err(err) => Err(Error::Http(err)),
+        }
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
-        if let Some(ref gotify_config) = notify.gotify {
-            notification.expected(gotify_config.reminders_only)
-        } else {
-            false
-        }
+    fn can_notify(gotify: &Self::Config, notification: &Notification<'_>) -> bool {
+        notification.expected(gotify.reminders_only)
     }
 
     fn name() -> &'static str {

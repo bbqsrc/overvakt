@@ -22,9 +22,8 @@ use std::time::Duration;
 use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 
-use super::generic::{GenericNotifier, Notification, DISPATCH_TIMEOUT_SECONDS};
-use crate::config::config::ConfigNotify;
-use crate::APP_CONF;
+use super::generic::{Notification, Notifier, DISPATCH_TIMEOUT_SECONDS};
+use crate::{config::notify, APP_CONF};
 
 static MATRIX_HTTP_CLIENT: Lazy<Client> = Lazy::new(|| {
     Client::builder()
@@ -48,57 +47,56 @@ static MATRIX_MESSAGE_FORMAT: &'static str = "org.matrix.custom.html";
 
 pub struct MatrixNotifier;
 
-impl GenericNotifier for MatrixNotifier {
-    type Config = ConfigNotify;
-    type Error = bool;
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("An HTTP error was returned.")]
+    Http(#[from] reqwest::Error),
 
-    fn attempt(notify: &ConfigNotify, notification: &Notification<'_>) -> Result<(), bool> {
-        if let Some(ref matrix) = notify.matrix {
-            // Build up the message text
-            let message = format_message(notification);
+    #[error("Status was not success.")]
+    NonSuccess(#[source] reqwest::Error),
+}
 
-            log::debug!("will send Matrix notification with message: {}", &message);
+impl Notifier for MatrixNotifier {
+    type Config = notify::Matrix;
+    type Error = Error;
 
-            // Generate URL
-            // See: https://matrix.org/docs/guides/client-server-api#sending-messages
-            let url = format!(
-                "{}_matrix/client/r0/rooms/{}/send/m.room.message?access_token={}",
-                matrix.homeserver_url.as_str(),
-                matrix.room_id.as_str(),
-                matrix.access_token.as_str()
-            );
+    fn attempt(matrix: &Self::Config, notification: &Notification<'_>) -> Result<(), Self::Error> {
+        // Build up the message text
+        let message = format_message(notification);
 
-            // Build message parameters
-            let mut params: HashMap<&str, &str> = HashMap::new();
+        log::debug!("will send Matrix notification with message: {}", &message);
 
-            params.insert("body", MATRIX_MESSAGE_BODY);
-            params.insert("msgtype", MATRIX_MESSAGE_TYPE);
-            params.insert("format", MATRIX_MESSAGE_FORMAT);
-            params.insert("formatted_body", &message);
+        // Generate URL
+        // See: https://matrix.org/docs/guides/client-server-api#sending-messages
+        let url = format!(
+            "{}_matrix/client/r0/rooms/{}/send/m.room.message?access_token={}",
+            matrix.homeserver_url.as_str(),
+            matrix.room_id.as_str(),
+            matrix.access_token.as_str()
+        );
 
-            // Submit message to Matrix
-            let response = MATRIX_HTTP_CLIENT.post(&url).json(&params).send();
+        // Build message parameters
+        let mut params: HashMap<&str, &str> = HashMap::new();
 
-            if let Ok(response_inner) = response {
-                if response_inner.status().is_success() != true {
-                    return Err(true);
-                }
-            } else {
-                return Err(true);
-            }
+        params.insert("body", MATRIX_MESSAGE_BODY);
+        params.insert("msgtype", MATRIX_MESSAGE_TYPE);
+        params.insert("format", MATRIX_MESSAGE_FORMAT);
+        params.insert("formatted_body", &message);
 
-            return Ok(());
+        // Submit message to Matrix
+        let response = MATRIX_HTTP_CLIENT.post(&url).json(&params).send();
+
+        match response {
+            Ok(response) => match response.error_for_status() {
+                Ok(_) => Ok(()),
+                Err(err) => Err(Error::NonSuccess(err)),
+            },
+            Err(err) => Err(Error::Http(err)),
         }
-
-        Err(false)
     }
 
-    fn can_notify(notify: &ConfigNotify, notification: &Notification<'_>) -> bool {
-        if let Some(ref matrix_config) = notify.matrix {
-            notification.expected(matrix_config.reminders_only)
-        } else {
-            false
-        }
+    fn can_notify(config: &Self::Config, notification: &Notification<'_>) -> bool {
+        notification.expected(config.reminders_only)
     }
 
     fn name() -> &'static str {

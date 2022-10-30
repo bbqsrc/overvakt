@@ -22,12 +22,13 @@ use std::time::{Duration, SystemTime};
 use time;
 use time::format_description::FormatItem;
 
-use crate::config::config::ConfigNotifyReminderBackoffFunction;
+use crate::config::notify;
 use crate::notifier::generic::Notification;
+use crate::notifier::Error;
 use crate::prober::manager::STORE as PROBER_STORE;
 use crate::prober::mode::Mode;
 use crate::prober::status::Status;
-use crate::{notifier, APP_CONF};
+use crate::APP_CONF;
 
 #[cfg(feature = "notifier-email")]
 use crate::notifier::email::EmailNotifier;
@@ -89,6 +90,7 @@ fn check_child_status(parent_status: &Status, child_status: &Status) -> Option<S
 }
 
 fn scan_and_bump_states() -> Option<BumpedStates> {
+    let notify = &APP_CONF.notify;
     let mut bumped_replicas = Vec::new();
 
     let mut store = PROBER_STORE.write();
@@ -263,75 +265,70 @@ fn scan_and_bump_states() -> Option<BumpedStates> {
     if has_changed == false && should_notify == false && general_status == Status::Dead {
         log::debug!("status unchanged, but may need to re-notify; checking");
 
-        if let Some(ref notify) = APP_CONF.notify {
-            match (store.notified, notify.reminder_interval) {
-                (Some(last_notified), Some(reminder_interval)) => {
-                    if let Ok(duration_since_notified) =
-                        SystemTime::now().duration_since(last_notified)
-                    {
-                        // Notice: we use backoff counter all the time because if it is disabled, \
-                        //   then the value is 1 at any time, thus not impacting the interval.
-                        let reminder_backoff_counter =
-                            store.states.notifier.reminder_backoff_counter;
-                        let reminder_ignore_until = store.states.notifier.reminder_ignore_until;
-                        let reminder_interval_backoff = Duration::from_secs(
-                            reminder_interval
-                                * (reminder_backoff_counter as u64)
-                                    .pow(notify.reminder_backoff_function as u32),
-                        );
+        match (store.notified, notify.reminder_interval) {
+            (Some(last_notified), Some(reminder_interval)) => {
+                if let Ok(duration_since_notified) = SystemTime::now().duration_since(last_notified)
+                {
+                    // Notice: we use backoff counter all the time because if it is disabled, \
+                    //   then the value is 1 at any time, thus not impacting the interval.
+                    let reminder_backoff_counter = store.states.notifier.reminder_backoff_counter;
+                    let reminder_ignore_until = store.states.notifier.reminder_ignore_until;
+                    let reminder_interval_backoff = Duration::from_secs(
+                        reminder_interval
+                            * (reminder_backoff_counter as u64)
+                                .pow(notify.reminder_backoff_function as u32),
+                    );
 
-                        // Check if reminders should be ignored for now?
-                        let should_ignore_reminders =
-                            if let Some(reminder_ignore_until) = reminder_ignore_until {
-                                SystemTime::now() < reminder_ignore_until
-                            } else {
-                                false
-                            };
-
-                        log::debug!(
-                            "checking if should re-notify about unchanged status ({}s / {}↑ / {})",
-                            reminder_interval_backoff.as_secs(),
-                            reminder_backoff_counter,
-                            if should_ignore_reminders == false {
-                                "✓"
-                            } else {
-                                "✖"
-                            }
-                        );
-
-                        // Duration since last notified exceeds reminder interval? Should re-notify
-                        if duration_since_notified >= reminder_interval_backoff
-                            && should_ignore_reminders == false
-                        {
-                            log::info!("should re-notify about unchanged status");
-
-                            should_notify = true;
-
-                            // Increment the backoff counter? (a backoff function is set, \
-                            //   therefore reminders backoff is enabled)
-                            if notify.reminder_backoff_function
-                                != ConfigNotifyReminderBackoffFunction::None
-                                && store.states.notifier.reminder_backoff_counter
-                                    < notify.reminder_backoff_limit
-                            {
-                                store.states.notifier.reminder_backoff_counter += 1;
-
-                                log::debug!(
-                                    "incremented re-notify backoff counter to: {} (limit: {})",
-                                    store.states.notifier.reminder_backoff_counter,
-                                    notify.reminder_backoff_limit
-                                );
-                            }
+                    // Check if reminders should be ignored for now?
+                    let should_ignore_reminders =
+                        if let Some(reminder_ignore_until) = reminder_ignore_until {
+                            SystemTime::now() < reminder_ignore_until
                         } else {
+                            false
+                        };
+
+                    log::debug!(
+                        "checking if should re-notify about unchanged status ({}s / {}↑ / {})",
+                        reminder_interval_backoff.as_secs(),
+                        reminder_backoff_counter,
+                        if should_ignore_reminders == false {
+                            "✓"
+                        } else {
+                            "✖"
+                        }
+                    );
+
+                    // Duration since last notified exceeds reminder interval? Should re-notify
+                    if duration_since_notified >= reminder_interval_backoff
+                        && should_ignore_reminders == false
+                    {
+                        log::info!("should re-notify about unchanged status");
+
+                        should_notify = true;
+
+                        // Increment the backoff counter? (a backoff function is set, \
+                        //   therefore reminders backoff is enabled)
+                        if notify.reminder_backoff_function != notify::ReminderBackoffFunction::None
+                            && store.states.notifier.reminder_backoff_counter
+                                < notify.reminder_backoff_limit
+                        {
+                            store.states.notifier.reminder_backoff_counter += 1;
+
                             log::debug!(
-                                "should not re-notify about unchanged status (interval: {})",
-                                reminder_interval
+                                "incremented re-notify backoff counter to: {} (limit: {})",
+                                store.states.notifier.reminder_backoff_counter,
+                                notify.reminder_backoff_limit
                             );
                         }
+                    } else {
+                        log::debug!(
+                            "should not re-notify about unchanged status (interval: {})",
+                            reminder_interval
+                        );
                     }
                 }
-                _ => {}
             }
+            _ => {}
         }
     }
 
@@ -360,30 +357,36 @@ fn time_now_as_string() -> String {
 }
 
 fn dispatch_startup_notification() -> Result<(), Vec<Error>> {
-    if let Some(ref conf_notify) = APP_CONF.notify {
-        if conf_notify.startup_notification == true {
-            log::debug!("sending aggregate startup notification...");
+    if APP_CONF.notify.startup_notification {
+        log::debug!("sending aggregate startup notification...");
 
-            notify(&BumpedStates {
-                status: Status::Healthy,
-                replicas: Vec::new(),
-                changed: true,
-                startup: true,
-            })?;
-        }
+        notify(&BumpedStates {
+            status: Status::Healthy,
+            replicas: Vec::new(),
+            changed: true,
+            startup: true,
+        })?;
     }
 
     Ok(())
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[cfg(feature = "notifier-email")]
-    #[error("There was an error with the `email` notifier")]
-    Email(Vec<notifier::email::Error>),
+macro_rules! notifier {
+    ($feature:expr, $cfg_field:ident, $ty:ty, $notify:path, $notification:path, $errors:path) => {
+        #[cfg(feature = $feature)]
+        if let Some(config) = $notify.$cfg_field.as_ref() {
+            match Notification::dispatch::<$ty>(config, &$notification) {
+                Ok(_) => {}
+                Err(err) => {
+                    $errors.push(err);
+                }
+            };
+        }
+    };
 }
 
 fn notify(bumped_states: &BumpedStates) -> Result<(), Vec<Error>> {
+    let notify = &APP_CONF.notify;
     let notification = Notification {
         status: &bumped_states.status,
         time: time_now_as_string(),
@@ -394,47 +397,94 @@ fn notify(bumped_states: &BumpedStates) -> Result<(), Vec<Error>> {
 
     let mut errors: Vec<Error> = vec![];
 
-    if let Some(ref notify) = APP_CONF.notify {
-        #[cfg(feature = "notifier-email")]
-        if let Some(config) = notify.email.as_ref() {
-            match Notification::dispatch::<EmailNotifier>(config, &notification) {
-                Ok(_) => {}
-                Err(e) => {
-                    errors.push(Error::Email(e));
-                }
-            }
-        }
-
-        #[cfg(feature = "notifier-twilio")]
-        Notification::dispatch::<TwilioNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-slack")]
-        Notification::dispatch::<SlackNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-zulip")]
-        Notification::dispatch::<ZulipNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-telegram")]
-        Notification::dispatch::<TelegramNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-pushover")]
-        Notification::dispatch::<PushoverNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-gotify")]
-        Notification::dispatch::<GotifyNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-xmpp")]
-        Notification::dispatch::<XMPPNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-matrix")]
-        Notification::dispatch::<MatrixNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-webex")]
-        Notification::dispatch::<WebExNotifier>(notify, &notification).ok();
-
-        #[cfg(feature = "notifier-webhook")]
-        Notification::dispatch::<WebHookNotifier>(notify, &notification).ok();
-    }
+    notifier!(
+        "notifier-email",
+        email,
+        EmailNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-twilio",
+        twilio,
+        TwilioNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-slack",
+        slack,
+        SlackNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-zulip",
+        zulip,
+        ZulipNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-telegram",
+        telegram,
+        TelegramNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-pushover",
+        pushover,
+        PushoverNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-gotify",
+        gotify,
+        GotifyNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-matrix",
+        matrix,
+        MatrixNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-webex",
+        webex,
+        WebExNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-webhook",
+        webhook,
+        WebHookNotifier,
+        notify,
+        notification,
+        errors
+    );
+    notifier!(
+        "notifier-xmpp",
+        xmpp,
+        XMPPNotifier,
+        notify,
+        notification,
+        errors
+    );
 
     if errors.is_empty() {
         Ok(())

@@ -24,26 +24,25 @@ mod prober;
 mod responder;
 mod util;
 
-use std::ops::Deref;
+use std::path::PathBuf;
 use std::str::FromStr;
-use std::thread;
 use std::time::Duration;
+use std::{process, thread};
 
-use clap::{Arg, Command};
+use clap::{value_parser, Arg, Command};
 use log::LevelFilter;
 use once_cell::sync::Lazy;
 
 use crate::aggregator::manager::run as run_aggregator;
-use crate::config::config::Config;
 use crate::config::logger::ConfigLogger;
-use crate::config::reader::ConfigReader;
+use crate::config::Config;
 use crate::prober::manager::{
     initialize_store as initialize_store_prober, run_poll as run_poll_prober,
     run_script as run_script_prober,
 };
 
 struct AppArgs {
-    config: String,
+    config: PathBuf,
 }
 
 pub static THREAD_NAME_PROBER_POLL: &'static str = "overvakt-prober-poll";
@@ -81,7 +80,24 @@ macro_rules! gen_spawn_managed {
 }
 
 static APP_ARGS: Lazy<AppArgs> = Lazy::new(|| make_app_args());
-static APP_CONF: Lazy<Config> = Lazy::new(|| ConfigReader::make());
+static APP_CONF: Lazy<Config> = Lazy::new(|| {
+    let c = match Config::new(&APP_ARGS.config) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Error loading config:");
+            eprintln!("{}", e);
+            process::exit(1);
+        }
+    };
+
+    // Ensure assets path exists
+    if !c.assets.path.exists() {
+        eprintln!("assets directory not found: {:?}", c.assets.path);
+        process::exit(1);
+    }
+
+    c
+});
 
 gen_spawn_managed!(
     "prober-poll",
@@ -112,30 +128,18 @@ fn make_app_args() -> AppArgs {
                 .short('c')
                 .long("config")
                 .help("Path to configuration file")
-                .default_value("./overvakt.toml"),
+                .default_value("./overvakt.toml")
+                .value_parser(value_parser!(PathBuf)),
         )
         .get_matches();
 
     // Generate owned app arguments
     AppArgs {
         config: matches
-            .get_one::<String>("config")
+            .get_one::<PathBuf>("config")
             .expect("invalid config value")
-            .to_string(),
+            .to_path_buf(),
     }
-}
-
-fn ensure_states() {
-    // Ensure all statics are valid (a `deref` is enough to lazily initialize them)
-    let (_, _) = (APP_ARGS.deref(), APP_CONF.deref());
-
-    // Ensure assets path exists
-    assert_eq!(
-        APP_CONF.assets.path.exists(),
-        true,
-        "assets directory not found: {:?}",
-        APP_CONF.assets.path
-    );
 }
 
 #[tokio::main]
@@ -146,9 +150,6 @@ async fn main() -> anyhow::Result<()> {
     );
 
     log::info!("starting up");
-
-    // Ensure all states are bound
-    ensure_states();
 
     // Initialize prober store
     initialize_store_prober();
