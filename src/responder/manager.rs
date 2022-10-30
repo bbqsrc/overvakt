@@ -50,7 +50,7 @@ pub async fn run() -> std::io::Result<()> {
         .with(NormalizePath::new(TrailingSlash::Trim));
 
     Server::new(TcpListener::bind(APP_CONF.server.inet))
-        .run(app)
+        .run_with_graceful_shutdown(app, async { tokio::signal::ctrl_c().await.unwrap() }, None)
         .await?;
 
     Ok(())
